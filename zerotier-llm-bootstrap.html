@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZeroTier LLM Bootstrap — WatsonOW Infrastructure</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --heading: #f0f6fc; --accent: #58a6ff;
+    --green: #3fb950; --orange: #d29922; --red: #f85149; --purple: #bc8cff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; padding: 2rem; max-width: 960px; margin: 0 auto; }
+  h1 { color: var(--heading); font-size: 2rem; margin-bottom: .5rem; }
+  h2 { color: var(--accent); font-size: 1.4rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+  h3 { color: var(--purple); font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: .75rem; }
+  p, li { margin-bottom: .75rem; }
+  code { background: var(--surface); padding: .2rem .5rem; border-radius: 4px; font-size: .9em; color: var(--orange); }
+  pre { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; white-space: pre-wrap; word-break: break-word; }
+  pre code { background: none; padding: 0; color: var(--text); }
+  .badge { display: inline-block; padding: .2rem .6rem; border-radius: 12px; font-size: .8em; font-weight: 600; margin-right: .5rem; }
+  .bg { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+  .bo { background: rgba(210,153,34,.15); color: var(--orange); border: 1px solid rgba(210,153,34,.3); }
+  .br { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.3); }
+  .bp { background: rgba(188,140,255,.15); color: var(--purple); border: 1px solid rgba(188,140,255,.3); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin: 1rem 0; }
+  .arch { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 2rem; margin: 1.5rem 0; text-align: center; font-family: monospace; white-space: pre; line-height: 1.3; color: var(--green); font-size: .85rem; overflow-x: auto; }
+  .step { border-left: 3px solid var(--accent); padding-left: 1rem; margin: 1rem 0; }
+  .warn { background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.3); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+  .info { background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.3); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+  .err { background: rgba(248,81,73,.1); border: 1px solid rgba(248,81,73,.3); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--accent); font-weight: 600; }
+  .machine { background: var(--surface); border: 2px solid var(--accent); border-radius: 8px; padding: 1.5rem; margin: 1rem 0; }
+  .machine h3 { margin-top: 0; }
+</style>
+</head>
+<body>
+
+<h1>🌐 ZeroTier LLM Bootstrap</h1>
+<p><span class="badge bp">Bootstrap Doc</span> <span class="badge bo">v1.0</span></p>
+<p><em>Single-source implementation guide for cross-device LLM serving via ZeroTier. Pass this file to any agent on any machine — it contains everything needed.</em></p>
+
+<h2>⚡ Quick Start (Copy-Paste)</h2>
+<div class="card">
+<p><strong>On Windows PC (Inference Host):</strong></p>
+<pre><code># 1. Install LiteLLM proxy
+pip install 'litellm[proxy]'
+
+# 2. Create config directory
+mkdir %USERPROFILE%\.litellm
+
+# 3. Save litellm-config.yaml (see Section 4 below) to:
+#    C:\Users\Juan\.litellm\config.yaml
+
+# 4. Ensure llama.cpp is running on port 8080
+
+# 5. Start LiteLLM proxy
+$env:OPENAI_API_KEY="***"
+litellm --config "$env:USERPROFILE\.litellm\config.yaml" --port 4000 --host 0.0.0.0</code></pre>
+
+<p><strong>On Linux/Mac (Client):</strong></p>
+<pre><code># Create ~/.codex/config.toml with:
+[openai]
+base_url = "http://10.88.140.94:4000/v1"
+api_key = "***"
+
+# Test it:
+codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
+</div>
+
+<h2>📐 Architecture Overview</h2>
+
+<div class="arch">
+┌─────────────────────────────────────────────────────────────────────┐
+│                     WINDOWS PC (Inference Host)                       │
+│                     ZeroTier IP: 10.88.140.94                          │
+│                                                                       │
+│  ┌───────────────────────────────────────────────────────────────┐   │
+│  │                    LiteLLM Proxy                               │   │
+│  │                    Port: 4000                                  │   │
+│  │  Binds to: 0.0.0.0 (all interfaces including ZeroTier)        │   │
+│  │                                                                │   │
+│  │  Endpoints:                                                    │   │
+│  │    /v1/models            ← Model listing                      │   │
+│  │    /v1/chat/completions  ← Standard OpenAI API                │   │
+│  │    /v1/responses         ← Codex Responses API ✅             │   │
+│  └───────────────────────────┬───────────────────────────────────┘   │
+│                              │ localhost:8080                          │
+│  ┌───────────────────────────▼───────────────────────────────────┐   │
+│  │                    llama.cpp Server                            │   │
+│  │                    Port: 8080                                  │   │
+│  │  Binds to: 127.0.0.1 (localhost only)                         │   │
+│  │                                                                │   │
+│  │  Model: qwen36-turbo-hermes                                    │   │
+│  │  Params: ~26B | Size: ~13.5GB GGUF                            │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+                              ▲
+                    ZeroTier Network
+                    (172.24.x.x range)
+              ┌───────────────┴───────────────┐
+              │                               │
+  ┌──────────────────────┐      ┌──────────────────────┐
+  │   MAC BOOKPRO        │      │   LINUX LAPTOP         │
+  │   ZeroTier Client    │      │   ZeroTier Client      │
+  │   IP: TBD           │      │   IP: 10.88.140.135    │
+  │                     │      │                        │
+  │   Codex App        │      │   Hermes Agent         │
+  │   → :4000          │      │   → :4000              │
+  │   Codex CLI        │      │   Codex CLI            │
+  └────────────────────┘      └────────────────────────┘
+</div>
+
+<h2>🔑 Key Design Decisions</h2>
+
+<div class="card">
+<h3>Why LiteLLM on Windows?</h3>
+<p>LiteLLM is a <strong>proxy layer</strong>, not an inference engine. It sits between clients and the model server, translating API formats and managing routing. By placing it on the Windows PC alongside llama.cpp:</p>
+<ul>
+  <li><strong>Single configuration point</strong> — configure once, all devices connect</li>
+  <li><strong>ZeroTier binding</strong> — LiteLLM binds to <code>0.0.0.0</code>, exposing port 4000 on the ZeroTier interface</li>
+  <li><strong>Responses API translation</strong> — Codex CLI/App uses OpenAI's Responses API; LiteLLM translates it to Chat Completions that llama.cpp understands</li>
+  <li><strong>No duplicate installs</strong> — Mac and Linux only need Codex CLI/App, no proxy software</li>
+</ul>
+</div>
+
+<div class="card">
+<h3>Why llama.cpp stays on localhost?</h3>
+<p>llama.cpp binds to <code>127.0.0.1:8080</code> — it's the raw inference engine and doesn't need external exposure. LiteLLM handles all network-facing concerns:</p>
+<ul>
+  <li>Authentication & rate limiting</li>
+  <li>API format translation (Responses ↔ Chat Completions)</li>
+  <li>Request queuing when multiple clients connect simultaneously</li>
+</ul>
+</div>
+
+<h2>🧠 Memory Architecture</h2>
+
+<div class="info">
+<strong>Critical: Model is loaded ONCE, shared by all connections.</strong>
+</div>
+
+<table>
+<tr><th>Fact</th><th>Detail</th></tr>
+<tr><td>Model size</td><td>~13.5 GB (GGUF quantized)</td></tr>
+<tr><td>RAM required</td><td>~14–16 GB total (model + overhead)</td></tr>
+<tr><td>Multiple clients</td><td><span class="badge bg">SAFE</span> Shared model instance — no memory multiplication</td></tr>
+<tr><td>Concurrent requests</td><td>llama.cpp queues them sequentially — one inference at a time</td></tr>
+<tr><td>Hermes + Codex simultaneously</td><td><span class="badge bo">POSSIBLE</span> Requests queue; expect latency when both active</td></tr>
+</table>
+
+<div class="warn">
+<strong>⚠️ Important:</strong> When llama.cpp is running, the model occupies ~14GB of RAM on the Windows PC. Running Hermes sessions that also hit this same endpoint works fine — they share the model. But if you try to run a <em>separate</em> local model instance (e.g., Ollama) simultaneously, you'll likely OOM.
+</div>
+
+<h2>🔄 Session Management (How Concurrent Clients Work)</h2>
+
+<div class="card">
+<h3>Each HTTP Request is Independent</h3>
+<p>llama.cpp serves <strong>statelessly</strong>. Each <code>/v1/chat/completions</code> or <code>/v1/responses</code> request is a standalone operation:</p>
+<ol>
+<li>Codex on Mac sends a request with its own <code>messages</code> array → llama.cpp processes it → returns response → <strong>KV cache freed</strong></li>
+<li>Codex on Linux sends a request with its own <code>messages</code> array → llama.cpp processes it → returns response → <strong>KV cache freed</strong></li>
+</ol>
+<p><strong>No cross-contamination between clients.</strong> Each request carries its complete conversation history in the <code>messages</code> payload. The model doesn't "remember" between HTTP calls unless you explicitly include prior messages.</p>
+</div>
+
+<div class="card">
+<h3>Where Context Lives</h3>
+<p>The conversation context is maintained by the <strong>client</strong>, not the server:</p>
+<ul>
+<li><strong>Codex App/CLI</strong> maintains its own conversation history locally. Each request sends the full message history to the model.</li>
+<li><strong>Hermes Agent</strong> maintains its own conversation history. Each delegation or tool call sends its own <code>messages</code> array.</li>
+<li><strong>llama.cpp</strong> just receives a batch of messages and generates a response — it has no persistent session state.</li>
+</ul>
+<p>This means Mac Codex session A and Linux Codex session B are completely isolated. They share the model weights but have entirely separate conversation contexts.</p>
+</div>
+
+<div class="card">
+<h3>KV Cache Behavior</h3>
+<p>The KV cache is the buffer that holds attention keys/values during inference:</p>
+<ul>
+<li>Allocated once at startup (controlled by <code>--ctx-size</code> / <code>n_ctx</code>)</li>
+<li>Used during a single request, then <strong>freed</strong> after response completes</li>
+<li>Reused for the next request — no accumulation across clients</li>
+</ul>
+<p><strong>The real constraint:</strong> If a single conversation gets very long (e.g., 60K+ tokens), it fills the KV cache buffer. But this is per-request, not cumulative across clients.</p>
+</div>
+
+<div class="info">
+<strong>Summary:</strong> Multiple clients = no OOM risk from context stacking. Each client's conversation is self-contained in its own <code>messages</code> array. The model weights are shared; the KV cache is reused per-request. Think of llama.cpp as a stateless function: <code>f(messages) → response</code>.
+</div>
+
+<h2>🌐 Network Details</h2>
+
+<div class="info">
+<strong>ZeroTier Network:</strong> <code>my-first-network</code> (ID: <code>3b19b3a716937e29</code>)<br>
+<strong>Network Group:</strong> Default Network Group
+</div>
+
+<table>
+<tr><th>Device</th><th>ZT IP</th><th>Public IP</th><th>Platform</th><th>Role</th></tr>
+<tr><td>Windows PC</td><td><code>10.88.140.94</code></td><td>79.159.104.225:3402</td><td>Windows · v1.16.1</td><td><span class="badge bg">Inference Host</span></td></tr>
+<tr><td>Linux Laptop</td><td><code>10.88.140.135</code></td><td>79.159.104.225:54811</td><td>Linux · v1.16.1</td><td><span class="badge bp">Client</span></td></tr>
+<tr><td>Mac BookPro</td><td><em>TBD</em></td><td><em>TBD</em></td><td><em>—</em></td><td><span class="badge bp">Client</span></td></tr>
+</table>
+
+<div class="info">
+<strong>Dual IP Note:</strong> Your ZeroTier network uses the <code>10.88.x.x</code> range (visible in the ZT admin console). The legacy <code>172.24.x.x</code> IPs may still be assigned via VLAN/IPAM rules — use whichever IP is reachable. Test with <code>ping 10.88.140.94</code> from Linux to verify Windows reachability.
+</div>
+
+<div class="warn">
+<strong>ZeroTier Firewall Note:</strong> Ensure port <code>4000</code> is accessible over the ZeroTier interface. Windows Firewall may block incoming connections — add a rule for TCP 4000 on the ZeroTier network profile.
+</div>
+
+<h2>📋 Implementation Steps</h2>
+
+<div class="machine">
+<h3>🖥️ Machine 1: Windows PC (Inference Host)</h3>
+
+<div class="step">
+<h3>Step 1: Install LiteLLM Proxy</h3>
+<pre><code># PowerShell or CMD on Windows
+pip install 'litellm[proxy]'</code></pre>
+<p><span class="badge bg">Required</span> Installs LiteLLM + all proxy dependencies (FastAPI, uvicorn, etc.)</p>
+</div>
+
+<div class="step">
+<h3>Step 2: Create LiteLLM Config File</h3>
+<p>Create <code>C:\Users\Juan\.litellm\config.yaml</code>:</p>
+<pre><code># litellm-config.yaml
+model_list:
+  - model_name: qwen36-turbo-hermes
+    litellm_params:
+      model: openai/qwen36-turbo-hermes
+      api_base: http://127.0.0.1:8080/v1
+      api_key: "***"
+
+env_vars:
+  OPENAI_API_KEY: "***"</code></pre>
+</div>
+
+<div class="step">
+<h3>Step 3: Verify llama.cpp is Running</h3>
+<pre><code># PowerShell — test direct connectivity
+curl http://127.0.0.1:8080/v1/models</code></pre>
+<p>Should return <code>qwen36-turbo-hermes</code>. If not, start llama.cpp server first.</p>
+<div class="warn">
+<strong>llama.cpp host binding:</strong> Your llama.cpp server can bind to <code>127.0.0.1</code> (localhost) since LiteLLM runs on the same machine and connects via localhost. No need to expose llama.cpp directly to ZeroTier.
+</div>
+</div>
+
+<div class="step">
+<h3>Step 4: Start LiteLLM Proxy</h3>
+<pre><code># PowerShell
+$env:OPENAI_API_KEY = "***"
+litellm --config "$env:USERPROFILE\.litellm\config.yaml" --port 4000 --host 0.0.0.0</code></pre>
+<p>This binds LiteLLM to <code>0.0.0.0:4000</code>, making it accessible via ZeroTier at <code>http://10.88.140.94:4000</code>.</p>
+</div>
+
+<div class="step">
+<h3>Step 5: Verify Proxy</h3>
+<pre><code># From Windows PowerShell
+curl http://127.0.0.1:4000/v1/models
+
+# Should return:
+# {"data":[{"id":"qwen36-turbo-hermes",...}]}</code></pre>
+</div>
+
+<div class="step">
+<h3>Step 6: Windows Firewall (if needed)</h3>
+<pre><code># PowerShell — allow port 4000 for ZeroTier network
+New-NetFirewallRule -DisplayName "LiteLLM Proxy" -Direction Inbound -LocalPort 4000 -Protocol TCP -Action Allow</code></pre>
+<p>If ZeroTier connections fail, this firewall rule may be required.</p>
+</div>
+
+<h3>Auto-Start Options</h3>
+
+<div class="card">
+<h4>Option A: Windows Task Scheduler (Recommended for daily use)</h4>
+<pre><code># Create start-litellm.ps1:
+$env:OPENAI_API_KEY = "***"
+& litellm --config "$env:USERPROFILE\.litellm\config.yaml" --port 4000 --host 0.0.0.0
+
+# Then create a scheduled task that runs this script on login</code></pre>
+
+<h4>Option B: NSSM Service (Production-grade)</h4>
+<pre><code># Install nssm via Chocolatey:
+choco install nssm
+
+# Register service:
+nssm install LiteLLMProxy "litellm" "--config %USERPROFILE%\.litellm\config.yaml --port 4000 --host 0.0.0.0"
+nssm set LiteLLMProxy AppEnvironmentExtra "OPENAI_API_KEY=***"
+nssm start LiteLLMProxy</code></pre>
+</div>
+
+</div>
+
+<div class="machine">
+<h3>🐧 Machine 2: Linux Laptop (Client)</h3>
+
+<div class="step">
+<h3>Step 1: Verify ZeroTier Connectivity</h3>
+<pre><code># Test reachability to Windows PC
+ping 10.88.140.94
+
+# Test LiteLLM proxy (once running)
+curl http://10.88.140.94:4000/v1/models</code></pre>
+</div>
+
+<div class="step">
+<h3>Step 2: Configure Codex CLI</h3>
+<p>Create <code>~/.codex/config.toml</code>:</p>
+<pre><code>[openai]
+base_url = "http://10.88.140.94:4000/v1"
+api_key = "***"</code></pre>
+</div>
+
+<div class="step">
+<h3>Step 3: Test Codex CLI</h3>
+<pre><code>codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
+<p>Should return a response from the model. No websocket errors expected when using LiteLLM proxy.</p>
+</div>
+
+<div class="step">
+<h3>Step 4: (Optional) Codex Desktop App via app-server</h3>
+<pre><code># Run app-server on Linux, bound to ZeroTier
+codex app-server --listen ws://0.0.0.0:8081
+
+# On another machine, connect Codex App to:
+# ws://&lt;linux_zerotier_ip&gt;:8081</code></pre>
+</div>
+
+</div>
+
+<div class="machine">
+<h3>🍎 Machine 3: Mac BookPro (Client)</h3>
+
+<div class="step">
+<h3>Step 1: Install ZeroTier & Join Network</h3>
+<pre><code># Install ZeroTier from zerotier.com
+# Join the same network as Windows PC and Linux laptop
+# Note your assigned IP (e.g., 172.24.x.x)</code></pre>
+</div>
+
+<div class="step">
+<h3>Step 2: Install Codex CLI</h3>
+<pre><code># macOS
+npm install -g @openai/codex
+
+# Verify
+codex --version</code></pre>
+</div>
+
+<div class="step">
+<h3>Step 3: Configure Codex</h3>
+<p>Create <code>~/.codex/config.toml</code>:</p>
+<pre><code>[openai]
+base_url = "http://10.88.140.94:4000/v1"
+api_key = "***"</code></pre>
+</div>
+
+<div class="step">
+<h3>Step 4: Test Connectivity</h3>
+<pre><code># Test proxy reachability
+curl http://10.88.140.94:4000/v1/models
+
+# Test Codex CLI
+codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
+</div>
+
+<div class="step">
+<h3>Step 5: (Optional) Codex Desktop App</h3>
+<pre><code># Install Codex App from openai.com/codex
+# The app reads ~/.codex/config.toml automatically
+# Or use codex app-server on Linux/Mac and connect the app to it</code></pre>
+</div>
+
+</div>
+
+<h2>📄 Config Files (Copy-Paste Ready)</h2>
+
+<div class="card">
+<h3>LiteLLM Config (<code>C:\Users\Juan\.litellm\config.yaml</code>)</h3>
+<pre><code>model_list:
+  - model_name: qwen36-turbo-hermes
+    litellm_params:
+      model: openai/qwen36-turbo-hermes
+      api_base: http://127.0.0.1:8080/v1
+      api_key: "***"
+
+env_vars:
+  OPENAI_API_KEY: "***"</code></pre>
+</div>
+
+<div class="card">
+<h3>Codex Config (<code>~/.codex/config.toml</code>) — Linux & Mac</h3>
+<pre><code>[openai]
+base_url = "http://10.88.140.94:4000/v1"
+api_key = "***"</code></pre>
+</div>
+
+<h2>🔧 API Endpoints Summary</h2>
+
+<table>
+<tr><th>Endpoint</th><th>Served By</th><th>Purpose</th><th>Status</th></tr>
+<tr><td><code>/v1/models</code></td><td>LiteLLM :4000</td><td>Model listing</td><td><span class="badge bg">Works ✅</span></td></tr>
+<tr><td><code>/v1/chat/completions</code></td><td>LiteLLM → llama.cpp</td><td>Standard OpenAI API</td><td><span class="badge bo">Auth quirk ⚠️</span></td></tr>
+<tr><td><code>/v1/responses</code></td><td>LiteLLM → llama.cpp</td><td>Codex Responses API</td><td><span class="badge bg">Works ✅</span></td></tr>
+</table>
+
+<h2>🚨 Known Issues & Mitigations</h2>
+
+<div class="warn">
+<strong>Chat Completions Auth Quirk:</strong> LiteLLM proxy sometimes fails to pass credentials through to llama.cpp for <code>/v1/chat/completions</code>. The <code>/v1/responses</code> endpoint works cleanly. <strong>Mitigation:</strong> Set <code>OPENAI_API_KEY</code> as an environment variable when starting the proxy process (see Step 4 above).
+</div>
+
+<div class="warn">
+<strong>Concurrent Request Latency:</strong> llama.cpp processes requests sequentially. When Hermes and Codex both send requests, they queue. Expect 10–30s latency per request for a 26B model. Don't run heavy tasks simultaneously.
+</div>
+
+<div class="err">
+<strong>Windows Firewall:</strong> If clients can't reach port 4000 over ZeroTier, Windows Firewall may be blocking it. Add an inbound rule for TCP 4000 (see Step 6 above).
+</div>
+
+<h2>📊 Token Budget Notes</h2>
+
+<div class="info">
+<strong>Context Window:</strong> Your model has <code>n_ctx: 65536</code> tokens. Codex sessions can be long — monitor context usage. Ensure llama.cpp is started with adequate <code>--ctx-size</code> (at least 32768, ideally 65536).
+</div>
+
+<h2>✅ Verification Checklist</h2>
+
+<pre><code>
+WINDOWS PC (Inference Host):
+[ ] LiteLLM installed: pip install 'litellm[proxy]'
+[ ] Config file created: C:\Users\Juan\.litellm\config.yaml
+[ ] llama.cpp running on port 8080
+[ ] LiteLLM proxy started on port 4000, bound to 0.0.0.0
+[ ] /v1/models returns qwen36-turbo-hermes via proxy
+[ ] Windows Firewall allows TCP 4000 (if needed)
+
+LINUX LAPTOP (Client):
+[ ] ZeroTier connected, can ping 10.88.140.94
+[ ] ~/.codex/config.toml created with base_url = http://10.88.140.94:4000/v1
+[ ] codex exec --model qwen36-turbo-hermes "Say hello" works
+
+MAC BOOKPRO (Client):
+[ ] ZeroTier installed & joined network
+[ ] Codex CLI installed: npm install -g @openai/codex
+[ ] ~/.codex/config.toml created with base_url = http://10.88.140.94:4000/v1
+[ ] codex exec --model qwen36-turbo-hermes "Say hello" works
+
+CROSS-CUTTING:
+[ ] /v1/responses works through proxy (Codex Responses API)
+[ ] No websocket errors in Codex output
+[ ] Hermes can still connect to llama.cpp (direct or via proxy)
+</code></pre>
+
+<h2>🔍 Troubleshooting</h2>
+
+<div class="card">
+<h3>"Connection refused" from clients</h3>
+<ul>
+  <li>Verify LiteLLM is running: check Windows terminal for <code>Uvicorn running on http://0.0.0.0:4000</code></li>
+  <li>Check Windows Firewall: <code>Get-NetFirewallRule | Where-Object {$_.LocalPorts -eq '4000'}</code></li>
+  <li>Test from Windows itself: <code>curl http://127.0.0.1:4000/v1/models</code></li>
+</ul>
+
+<h3>"Missing credentials" error</h3>
+<ul>
+  <li>Ensure <code>OPENAI_API_KEY</code> env var is set when starting LiteLLM</li>
+  <li>The value can be anything (e.g., <code>***</code>) — llama.cpp doesn't validate it</li>
+</ul>
+
+<h3>Codex websocket errors</h3>
+<ul>
+  <li>If you see websocket warnings, Codex is NOT using the LiteLLM proxy</li>
+  <li>Verify <code>~/.codex/config.toml</code> has <code>base_url = "http://10.88.140.94:4000/v1"</code></li>
+  <li>LiteLLM's /v1/responses endpoint handles this cleanly — no websocket needed</li>
+</ul>
+
+<h3>llama.cpp not responding through proxy</h3>
+<ul>
+  <li>Verify llama.cpp is running: <code>curl http://127.0.0.1:8080/v1/models</code></li>
+  <li>Check LiteLLM config has correct <code>api_base: http://127.0.0.1:8080/v1</code></li>
+</ul>
+</div>
+
+<hr style="border-color: var(--border); margin: 2rem 0;">
+
+<p style="text-align:center; color: var(--border); font-size: .85rem;">
+WatsonOW ZeroTier LLM Bootstrap · Architecture + Implementation Guide<br>
+Windows Host: 10.88.140.94 · Linux Client: 10.88.140.135 · Mac Client: TBD
+</p>
+
+</body>
+</html>
