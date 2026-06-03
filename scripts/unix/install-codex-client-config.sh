@@ -30,7 +30,7 @@ provider = f"""
 [model_providers.qwen36-zerotier]
 name = "qwen36 via Windows ZeroTier LiteLLM"
 base_url = "{base_url}"
-wire_api = "responses"
+wire_api = "chat_completions"
 """
 
 path.write_text(text.rstrip() + provider + "\n", encoding="utf-8")

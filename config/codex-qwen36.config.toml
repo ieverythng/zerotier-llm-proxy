@@ -1,4 +1,4 @@
 [model_providers.qwen36-zerotier]
 name = "qwen36 via Windows ZeroTier LiteLLM"
 base_url = "http://10.88.140.94:4000/v1"
-wire_api = "responses"
+wire_api = "chat_completions"

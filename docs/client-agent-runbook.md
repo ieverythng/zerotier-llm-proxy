@@ -27,7 +27,7 @@ LLM_MODEL=qwen36-turbo-hermes ./scripts/unix/verify-client.sh
 
 - `/v1/models` returns `qwen36-turbo-hermes`.
 - `/v1/chat/completions` returns a small text response.
-- `/v1/responses` returns a Codex-compatible response or at least a valid JSON response from LiteLLM.
+- The model does not support image input or the OpenAI Responses API (`/v1/responses`).
 
 ## Common Client-Side Failures
 
