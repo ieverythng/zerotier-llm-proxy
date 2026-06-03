@@ -17,10 +17,10 @@ Client-facing contract:
 
 - The server should expose `http://10.88.140.94:4000/v1`.
 - The model id should be `qwen36-turbo-hermes`.
-- Clients should select it with `codex --profile qwen36-zerotier`; it should not be assumed as the default model.
+- Clients should register provider `qwen36-zerotier` in `~/.codex/config.toml`; it should not be assumed as the default model.
 - The proxy should support:
   - `GET /v1/models`
   - `POST /v1/chat/completions`
   - `POST /v1/responses`
-- App verification should use a session-scoped Codex home, not `-c` overrides alone. The desktop/app-server startup path needs Qwen as the active config default for that launched process.
+- If Linux routes `10.88.140.94` over Wi-Fi instead of ZeroTier, fix the client with `sudo zerotier-cli set 3b19b3a716937e29 allowManaged=1` and reconnect ZeroTier.
 

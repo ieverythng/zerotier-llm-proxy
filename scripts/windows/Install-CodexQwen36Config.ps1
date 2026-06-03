@@ -59,11 +59,7 @@ if ($SetDefault) {
     Write-Host "Backup: $backup"
 }
 
-$block = @"
-model = "qwen36-turbo-hermes"
-model_provider = "qwen36-zerotier"
-model_context_window = 65536
-model_max_output_tokens = 8192
+$providerBlock = @"
 
 [model_providers.qwen36-zerotier]
 name = "qwen36 via Windows ZeroTier LiteLLM"
@@ -71,5 +67,17 @@ base_url = "$BaseUrl"
 wire_api = "responses"
 "@
 
-Set-Content -LiteralPath $ProfilePath -Value ($block.TrimStart() + "`r`n") -Encoding UTF8
+$configText = Get-Content -Raw -LiteralPath $ConfigPath
+$configText = [regex]::Replace($configText, "(?ms)\r?\n?\[model_providers\.qwen36-zerotier\].*?(?=\r?\n\[[^\]]+\]|\z)", "")
+Set-Content -LiteralPath $ConfigPath -Value ($configText.TrimEnd() + $providerBlock + "`r`n") -Encoding UTF8
+Write-Host "Registered provider in Codex config: $ConfigPath"
+
+$profileBlock = @"
+model = "qwen36-turbo-hermes"
+model_provider = "qwen36-zerotier"
+model_context_window = 65536
+model_max_output_tokens = 8192
+"@
+
+Set-Content -LiteralPath $ProfilePath -Value ($profileBlock.TrimStart() + "`r`n") -Encoding UTF8
 Write-Host "Installed selectable Codex profile: $ProfilePath"

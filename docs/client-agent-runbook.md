@@ -8,7 +8,7 @@ This machine is only a client. The Windows inference host is expected to run `ll
 ./scripts/unix/install-codex-client-config.sh
 ```
 
-The script writes a selectable `~/.codex/qwen36-zerotier.config.toml` profile. It backs up an existing profile file and does not change the global default model in `~/.codex/config.toml`.
+The script registers `[model_providers.qwen36-zerotier]` in `~/.codex/config.toml` and writes a selectable `~/.codex/qwen36-zerotier.config.toml` profile. It does not change the global default model.
 
 ## Verify Proxy
 
@@ -32,7 +32,7 @@ LLM_MODEL=qwen36-turbo-hermes ./scripts/unix/verify-client.sh
 ## Common Client-Side Failures
 
 - `Connection refused`: LiteLLM is not running, is not bound to `0.0.0.0`, or Windows Firewall blocks TCP 4000.
-- `Timeout`: ZeroTier route/firewall issue or the host is offline.
+- `Timeout`: ZeroTier route/firewall issue or the host is offline. If `ip route get 10.88.140.94` shows your Wi-Fi gateway instead of a ZeroTier device, run `sudo zerotier-cli set 3b19b3a716937e29 allowManaged=1`, reconnect ZeroTier, and verify again.
 - `401`/credential errors: the proxy is probably running with a stale authenticated config; restart it from `scripts/windows/Start-Qwen36LiteLLM.ps1`.
 - Codex websocket warnings: Codex is likely not reading `~/.codex/config.toml` or is pointed at the raw `llama.cpp` server instead of LiteLLM.
 
@@ -44,11 +44,5 @@ codex exec --profile qwen36-zerotier "Say hello"
 
 ## Run Codex App With Qwen
 
-Use the app launcher script. It creates a temporary Codex home with Qwen as the session default, then starts the app. Your normal `~/.codex/config.toml` default remains unchanged.
-
-```bash
-./scripts/unix/open-codex-app-qwen36.sh /path/to/workspace
-```
-
-The same generated-home approach has been verified with Codex app-server protocol on Windows. That test proves the app-side thread startup can select `qwen36-zerotier` and complete a turn through the ZeroTier LiteLLM proxy.
+Restart Codex Desktop after running the installer. The app reads the provider registry from `~/.codex/config.toml`; do not use a temporary `CODEX_HOME` wrapper for the app.
 

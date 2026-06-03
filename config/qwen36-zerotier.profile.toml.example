@@ -1,0 +1,4 @@
+model = "qwen36-turbo-hermes"
+model_provider = "qwen36-zerotier"
+model_context_window = 65536
+model_max_output_tokens = 8192

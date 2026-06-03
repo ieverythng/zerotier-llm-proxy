@@ -4,6 +4,7 @@ set -euo pipefail
 BASE_URL="${LLM_PROXY_BASE_URL:-http://10.88.140.94:4000/v1}"
 MODEL="${LLM_MODEL:-qwen36-turbo-hermes}"
 TIMEOUT_SECONDS="${LLM_VERIFY_TIMEOUT_SECONDS:-30}"
+PROXY_HOST="$(printf '%s\n' "$BASE_URL" | sed -E 's#^[a-zA-Z]+://([^/:]+).*#\1#')"
 
 require() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -32,8 +33,20 @@ curl_json() {
 }
 
 require curl
+require ip
 
 echo "Checking LiteLLM proxy at $BASE_URL"
+
+echo
+echo "0. Route to $PROXY_HOST"
+ROUTE_OUTPUT="$(ip route get "$PROXY_HOST" || true)"
+echo "$ROUTE_OUTPUT"
+
+if [[ "$ROUTE_OUTPUT" != *"dev zt"* && "$ROUTE_OUTPUT" != *"dev ZeroTier"* && "$ROUTE_OUTPUT" != *"dev zerotier"* ]]; then
+  echo "Warning: $PROXY_HOST is not routed through a ZeroTier interface." >&2
+  echo "Run: sudo zerotier-cli set 3b19b3a716937e29 allowManaged=1" >&2
+  echo "Then reconnect ZeroTier and re-run this verifier." >&2
+fi
 
 echo
 echo "1. GET /models"

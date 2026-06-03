@@ -1,10 +1,5 @@
-# Save this as ~/.codex/qwen36-zerotier.config.toml.
-# It intentionally does not change ~/.codex/config.toml or the default model.
-
-model = "qwen36-turbo-hermes"
-model_provider = "qwen36-zerotier"
-model_context_window = 65536
-model_max_output_tokens = 8192
+# Add this provider registry entry to ~/.codex/config.toml.
+# It intentionally does not change the default model.
 
 [model_providers.qwen36-zerotier]
 name = "qwen36 via Windows ZeroTier LiteLLM"

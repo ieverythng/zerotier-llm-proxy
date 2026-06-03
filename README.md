@@ -15,7 +15,8 @@ The implementation source of truth is [`zerotier-llm-bootstrap.html`](zerotier-l
 - LiteLLM proxy: `http://10.88.140.94:4000/v1`
 - Model name: `qwen36-turbo-hermes`
 - Client auth token: none; access is scoped by ZeroTier and Windows Firewall.
-- Codex selection: installed as `~/.codex/qwen36-zerotier.config.toml`, not as the global default.
+- Codex registry: provider is added to `~/.codex/config.toml`, without changing the global default.
+- Codex CLI selection: profile is installed as `~/.codex/qwen36-zerotier.config.toml`.
 
 ## Linux Client Quick Start
 
@@ -25,11 +26,7 @@ The implementation source of truth is [`zerotier-llm-bootstrap.html`](zerotier-l
 codex exec --profile qwen36-zerotier "Say hello"
 ```
 
-For the Codex desktop app on Linux/macOS, launch it with Qwen selected for that app session. This uses a temporary Codex home so your normal default model stays unchanged:
-
-```bash
-./scripts/unix/open-codex-app-qwen36.sh /path/to/workspace
-```
+For the Codex desktop app on Linux/macOS, restart the app after installing config. The app should see the custom `qwen36-zerotier` provider from the normal config registry.
 
 Override defaults when needed:
 
@@ -64,11 +61,5 @@ To add the selectable profile to this Windows Codex install without changing the
 .\scripts\windows\Install-CodexQwen36Config.ps1
 ```
 
-To launch the Codex desktop app on Windows with Qwen selected for that app session. This also uses a temporary Codex home:
-
-```powershell
-.\scripts\windows\Open-CodexAppQwen36.ps1 -Workspace C:\path\to\workspace
-```
-
-The app path was verified through `codex debug app-server send-message-v2` using the generated session Codex home. The app-server thread selected `qwen36-zerotier` and returned `app server qwen ok`.
+Restart Codex Desktop after installing the provider so the model/provider registry is reloaded.
 
