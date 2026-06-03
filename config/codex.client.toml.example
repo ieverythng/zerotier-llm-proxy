@@ -1,0 +1,4 @@
+[openai]
+base_url = "http://10.88.140.94:4000/v1"
+api_key = "local-dev-key"
+
