@@ -2,7 +2,6 @@
 set -euo pipefail
 
 BASE_URL="${LLM_PROXY_BASE_URL:-http://10.88.140.94:4000/v1}"
-API_KEY="${LLM_API_KEY:-local-dev-key}"
 MODEL="${LLM_MODEL:-qwen36-turbo-hermes}"
 TIMEOUT_SECONDS="${LLM_VERIFY_TIMEOUT_SECONDS:-30}"
 
@@ -22,14 +21,13 @@ curl_json() {
     curl --fail --show-error --silent \
       --max-time "$TIMEOUT_SECONDS" \
       -X "$method" "$url" \
-      -H "Authorization: Bearer $API_KEY" \
       -H "Content-Type: application/json" \
       --data "$data"
   else
     curl --fail --show-error --silent \
       --max-time "$TIMEOUT_SECONDS" \
       -X "$method" "$url" \
-      -H "Authorization: Bearer $API_KEY"
+      -H "Content-Type: application/json"
   fi
 }
 

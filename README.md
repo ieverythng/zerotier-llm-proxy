@@ -9,26 +9,32 @@ The implementation source of truth is [`zerotier-llm-bootstrap.html`](zerotier-l
 - **Client agents, Linux/macOS:** use `config/codex.client.toml.example` and `scripts/unix/*`.
 - **Server agent, Windows:** own the LiteLLM and `llama.cpp` host setup. See `docs/server-agent-handoff.md`; server scripts/config should live under `scripts/windows/` and `config/server/` when added.
 
-## Current Client Defaults
+## Current Client Values
 
 - Windows ZeroTier host: `10.88.140.94`
 - LiteLLM proxy: `http://10.88.140.94:4000/v1`
 - Model name: `qwen36-turbo-hermes`
-- Client auth token: placeholder value; LiteLLM/llama.cpp only require a non-empty key for this setup.
+- Client auth token: none; access is scoped by ZeroTier and Windows Firewall.
+- Codex selection: installed as `~/.codex/qwen36-zerotier.config.toml`, not as the global default.
 
 ## Linux Client Quick Start
 
 ```bash
 ./scripts/unix/install-codex-client-config.sh
 ./scripts/unix/verify-client.sh
-codex exec --model qwen36-turbo-hermes "Say hello"
+codex exec --profile qwen36-zerotier "Say hello"
+```
+
+For the Codex desktop app on Linux/macOS, launch it with Qwen selected for that app session. This uses a temporary Codex home so your normal default model stays unchanged:
+
+```bash
+./scripts/unix/open-codex-app-qwen36.sh /path/to/workspace
 ```
 
 Override defaults when needed:
 
 ```bash
 LLM_PROXY_BASE_URL=http://10.88.140.94:4000/v1 \
-LLM_API_KEY=local-dev-key \
 ./scripts/unix/install-codex-client-config.sh
 ```
 
@@ -42,4 +48,27 @@ From this Linux machine, the verification script checks the server from the outs
 - `POST /v1/responses`
 
 It does not start LiteLLM, install server dependencies, open firewall rules, or touch `llama.cpp`.
+
+## Windows Server Quick Start
+
+The Windows host runs `llama.cpp` locally on `127.0.0.1:8080` and exposes LiteLLM on `0.0.0.0:4000`:
+
+```powershell
+.\scripts\windows\Start-Qwen36LiteLLM.ps1
+.\scripts\windows\Test-Qwen36Proxy.ps1
+```
+
+To add the selectable profile to this Windows Codex install without changing the default model:
+
+```powershell
+.\scripts\windows\Install-CodexQwen36Config.ps1
+```
+
+To launch the Codex desktop app on Windows with Qwen selected for that app session. This also uses a temporary Codex home:
+
+```powershell
+.\scripts\windows\Open-CodexAppQwen36.ps1 -Workspace C:\path\to\workspace
+```
+
+The app path was verified through `codex debug app-server send-message-v2` using the generated session Codex home. The app-server thread selected `qwen36-zerotier` and returned `app server qwen ok`.
 

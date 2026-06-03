@@ -1,0 +1,3 @@
+*.log
+.codex-test/
+.codex-app-qwen-test/

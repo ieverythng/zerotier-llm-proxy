@@ -1,4 +1,13 @@
-[openai]
+# Save this as ~/.codex/qwen36-zerotier.config.toml.
+# It intentionally does not change ~/.codex/config.toml or the default model.
+
+model = "qwen36-turbo-hermes"
+model_provider = "qwen36-zerotier"
+model_context_window = 65536
+model_max_output_tokens = 8192
+
+[model_providers.qwen36-zerotier]
+name = "qwen36 via Windows ZeroTier LiteLLM"
 base_url = "http://10.88.140.94:4000/v1"
-api_key = "local-dev-key"
+wire_api = "responses"
 
