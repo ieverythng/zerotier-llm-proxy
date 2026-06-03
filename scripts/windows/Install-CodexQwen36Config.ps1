@@ -64,7 +64,7 @@ $providerBlock = @"
 [model_providers.qwen36-zerotier]
 name = "qwen36 via Windows ZeroTier LiteLLM"
 base_url = "$BaseUrl"
-wire_api = "chat_completions"
+wire_api = "responses"
 "@
 
 $configText = Get-Content -Raw -LiteralPath $ConfigPath

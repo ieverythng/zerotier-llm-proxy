@@ -39,11 +39,11 @@
 </head>
 <body>
 
-<h1>🌐 ZeroTier LLM Bootstrap</h1>
-<p><span class="badge bp">Bootstrap Doc</span> <span class="badge bo">v1.0</span></p>
+<h1>ZeroTier LLM Bootstrap</h1>
+<p><span class="badge bp">Bootstrap Doc</span> <span class="badge bo">v2.0</span></p>
 <p><em>Single-source implementation guide for cross-device LLM serving via ZeroTier. Pass this file to any agent on any machine — it contains everything needed.</em></p>
 
-<h2>⚡ Quick Start (Copy-Paste)</h2>
+<h2>Quick Start (Copy-Paste)</h2>
 <div class="card">
 <p><strong>On Windows PC (Inference Host):</strong></p>
 <pre><code># 1. Install LiteLLM proxy
@@ -52,7 +52,7 @@ pip install 'litellm[proxy]'
 # 2. Create config directory
 mkdir %USERPROFILE%\.litellm
 
-# 3. Save litellm-config.yaml (see Section 4 below) to:
+# 3. Save litellm-config.yaml (see Config Files section below) to:
 #    C:\Users\Juan\.litellm\config.yaml
 
 # 4. Ensure llama.cpp is running on port 8080
@@ -61,17 +61,27 @@ mkdir %USERPROFILE%\.litellm
 $env:OPENAI_API_KEY="***"
 litellm --config "$env:USERPROFILE\.litellm\config.yaml" --port 4000 --host 0.0.0.0</code></pre>
 
-<p><strong>On Linux/Mac (Client):</strong></p>
-<pre><code># Create ~/.codex/config.toml with:
-[openai]
-base_url = "http://10.88.140.94:4000/v1"
-api_key = "***"
+<p><strong>On Linux/Mac (Client) — CLI:</strong></p>
+<pre><code># Use the install script from this repo:
+cd /path/to/zerotier-llm-proxy
+./scripts/unix/install-codex-client-config.sh
 
-# Test it:
-codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
+# Or manually add to ~/.codex/config.toml:
+[model_providers.qwen36-zerotier]
+name = "qwen36 via Windows ZeroTier LiteLLM"
+base_url = "http://10.88.140.94:4000/v1"
+wire_api = "responses"
+
+# Test it (requires --profile flag):
+codex exec --profile qwen36-zerotier "Say hello"</code></pre>
+
+<p><strong>On Linux/Mac (Client) — Codex Desktop App:</strong></p>
+<pre><code># After installing config via the script above, set up the shell wrapper
+# so the Desktop app can select qwen36-turbo-hermes from the model dropdown.
+# See "Codex Desktop App Integration" section below for details.</code></pre>
 </div>
 
-<h2>📐 Architecture Overview</h2>
+<h2>Architecture Overview</h2>
 
 <div class="arch">
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -84,9 +94,9 @@ codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
 │  │  Binds to: 0.0.0.0 (all interfaces including ZeroTier)        │   │
 │  │                                                                │   │
 │  │  Endpoints:                                                    │   │
-│  │    /v1/models            ← Model listing                      │   │
-│  │    /v1/chat/completions  ← Standard OpenAI API                │   │
-│  │    /v1/responses         ← Codex Responses API ✅             │   │
+│  │    /v1/models            - Model listing                      │   │
+│  │    /v1/chat/completions  - Standard OpenAI API                │   │
+│  │    /v1/responses         - Codex Responses API                │   │
 │  └───────────────────────────┬───────────────────────────────────┘   │
 │                              │ localhost:8080                          │
 │  ┌───────────────────────────▼───────────────────────────────────┐   │
@@ -100,7 +110,7 @@ codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
 └─────────────────────────────────────────────────────────────────────┘
                               ▲
                     ZeroTier Network
-                    (172.24.x.x range)
+                    (10.88.x.x range)
               ┌───────────────┴───────────────┐
               │                               │
   ┌──────────────────────┐      ┌──────────────────────┐
@@ -108,13 +118,12 @@ codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
   │   ZeroTier Client    │      │   ZeroTier Client      │
   │   IP: TBD           │      │   IP: 10.88.140.135    │
   │                     │      │                        │
-  │   Codex App        │      │   Hermes Agent         │
+  │   Codex App        │      │   Codex Desktop App    │
   │   → :4000          │      │   → :4000              │
   │   Codex CLI        │      │   Codex CLI            │
-  └────────────────────┘      └────────────────────────┘
-</div>
+  └────────────────────┘      └────────────────────────┘</div>
 
-<h2>🔑 Key Design Decisions</h2>
+<h2>Key Design Decisions</h2>
 
 <div class="card">
 <h3>Why LiteLLM on Windows?</h3>
@@ -129,15 +138,120 @@ codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
 
 <div class="card">
 <h3>Why llama.cpp stays on localhost?</h3>
-<p>llama.cpp binds to <code>127.0.0.1:8080</code> — it's the raw inference engine and doesn't need external exposure. LiteLLM handles all network-facing concerns:</p>
+<p>llama.cpp binds to <code>127.0.0.1:8080</code> — it is the raw inference engine and does not need external exposure. LiteLLM handles all network-facing concerns:</p>
 <ul>
-  <li>Authentication & rate limiting</li>
-  <li>API format translation (Responses ↔ Chat Completions)</li>
+  <li>Authentication and rate limiting</li>
+  <li>API format translation (Responses to Chat Completions)</li>
   <li>Request queuing when multiple clients connect simultaneously</li>
 </ul>
 </div>
 
-<h2>🧠 Memory Architecture</h2>
+<h2>Codex Provider Architecture</h2>
+
+<div class="info">
+<strong>Important:</strong> Codex routes models to providers inside its compiled Rust binary. There is no per-model provider override in config or model catalogs. The only way to route a specific model through a custom provider is via the <code>--profile</code> flag, which sets <code>model_provider</code>.
+</div>
+
+<div class="card">
+<h3>Provider Registration (all clients)</h3>
+<p>Add this to <code>~/.codex/config.toml</code>:</p>
+<pre><code>[model_providers.qwen36-zerotier]
+name = "qwen36 via Windows ZeroTier LiteLLM"
+base_url = "http://10.88.140.94:4000/v1"
+wire_api = "responses"</code></pre>
+<p>This does <strong>not</strong> change the global default model or override the OpenAI provider. It only registers a named provider that profiles can reference.</p>
+
+<h3>Selectable Profile (CLI use)</h3>
+<p>Create <code>~/.codex/qwen36-zerotier.config.toml</code>:</p>
+<pre><code>model = "qwen36-turbo-hermes"
+model_provider = "qwen36-zerotier"
+model_context_window = 65536
+model_max_output_tokens = 8192</code></pre>
+<p>Then use it with:</p>
+<pre><code>codex exec --profile qwen36-zerotier "Say hello"</code></pre>
+
+<h3>Model Catalog (App model list)</h3>
+<p>A merged catalog at <code>~/.codex/model-catalogs/qwen36-plus-bundled.json</code> adds <code>qwen36-turbo-hermes</code> to the model selector dropdown. The install script generates this automatically from <code>codex debug models --bundled</code>.</p>
+</div>
+
+<h2>Codex Desktop App Integration</h2>
+
+<div class="card">
+<h3>The Problem</h3>
+<p>When you select <code>qwen36-turbo-hermes</code> from the Codex Desktop app model dropdown, the app spawns a CLI session with <code>-m qwen36-turbo-hermes</code> but does <strong>not</strong> pass <code>--profile</code>. Without the profile, Codex routes the model through the default OpenAI provider, which fails because that model does not exist on OpenAI's servers.</p>
+
+<h3>The Solution: Shell Wrapper</h3>
+<p>A shell script replaces the <code>codex</code> binary in PATH. It intercepts every invocation, detects when <code>-m qwen36-turbo-hermes</code> is present, and auto-injects <code>-p qwen36-zerotier</code> before delegating to the real Codex binary.</p>
+
+<h3>Setup Steps</h3>
+<ol>
+<li><strong>Rename the original codex script:</strong>
+<pre><code># The npm-installed codex is at ~/.local/bin/codex (or wherever npm put it)
+mv ~/.local/bin/codex ~/.local/bin/codex.real</code></pre></li>
+
+<li><strong>Create the wrapper at <code>~/.local/bin/codex</code>:</strong>
+<pre><code>#!/usr/bin/env bash
+# Wrapper: auto-inject qwen36-zerotier profile for qwen36-turbo-hermes model.
+REAL_CODEX="/home/juanbeck/.local/bin/codex.real"
+
+ARGS=("$@")
+NEED_PROFILE=0
+
+for i in "${!ARGS[@]}"; do
+    if [[ "${ARGS[$i]}" == "-m" || "${ARGS[$i]}" == "--model" ]]; then
+        next=$((i + 1))
+        if [[ $next -lt ${#ARGS[@]} ]]; then
+            model="${ARGS[$next]}"
+            if [[ "$model" == "qwen36-turbo-hermes" ]]; then
+                NEED_PROFILE=1
+            fi
+        fi
+    fi
+    if [[ "${ARGS[$i]}" == -m=* ]]; then
+        model="${ARGS[$i]#-m=}"
+        [[ "$model" == "qwen36-turbo-hermes" ]] && NEED_PROFILE=1
+    fi
+    if [[ "${ARGS[$i]}" == --model=* ]]; then
+        model="${ARGS[$i]#--model=}"
+        [[ "$model" == "qwen36-turbo-hermes" ]] && NEED_PROFILE=1
+    fi
+done
+
+if [[ $NEED_PROFILE -eq 1 ]]; then
+    has_profile=0
+    for arg in "${ARGS[@]}"; do
+        [[ "$arg" == "-p" || "$arg" == "--profile" || "$arg" == -p=* || "$arg" == --profile=* ]] && { has_profile=1; break; }
+    done
+    [[ $has_profile -eq 0 ]] && ARGS=("-p" "qwen36-zerotier" "${ARGS[@]}")
+fi
+
+exec "$REAL_CODEX" "${ARGS[@]}"</code></pre>
+<pre><code>chmod +x ~/.local/bin/codex</code></pre></li>
+
+<li><strong>Verify:</strong>
+<pre><code># Should route through qwen36-zerotier automatically:
+codex exec -m qwen36-turbo-hermes "Say hello"
+
+# Should still use default OpenAI provider (unaffected):
+codex exec -m gpt-5.5 "Say hello"</code></pre></li>
+</ol>
+
+<h3>How the Desktop App Uses It</h3>
+<p>The Codex Desktop app's <code>start.sh</code> resolves <code>CODEX_CLI_PATH</code> via <code>command -v codex</code>, which returns <code>~/.local/bin/codex</code> — our wrapper. Every session the app spawns goes through the wrapper, so selecting <code>qwen36-turbo-hermes</code> from the dropdown just works.</p>
+
+<h3>npm Update Resilience</h3>
+<div class="warn">
+<p><strong>Running <code>npm update -g @openai/codex</code> will overwrite the wrapper.</strong> After any npm update, restore it:</p>
+<pre><code># Option A: Run the restore script (stored at ~/.codex/restore-codex-wrapper.sh)
+~/.codex/restore-codex-wrapper.sh
+
+# Option B: Manual restore
+mv ~/.local/bin/codex ~/.local/bin/codex.real
+# Re-create the wrapper script (see above)</code></pre>
+</div>
+</div>
+
+<h2>Memory Architecture</h2>
 
 <div class="info">
 <strong>Critical: Model is loaded ONCE, shared by all connections.</strong>
@@ -146,26 +260,26 @@ codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
 <table>
 <tr><th>Fact</th><th>Detail</th></tr>
 <tr><td>Model size</td><td>~13.5 GB (GGUF quantized)</td></tr>
-<tr><td>RAM required</td><td>~14–16 GB total (model + overhead)</td></tr>
+<tr><td>RAM required</td><td>~14-16 GB total (model + overhead)</td></tr>
 <tr><td>Multiple clients</td><td><span class="badge bg">SAFE</span> Shared model instance — no memory multiplication</td></tr>
 <tr><td>Concurrent requests</td><td>llama.cpp queues them sequentially — one inference at a time</td></tr>
 <tr><td>Hermes + Codex simultaneously</td><td><span class="badge bo">POSSIBLE</span> Requests queue; expect latency when both active</td></tr>
 </table>
 
 <div class="warn">
-<strong>⚠️ Important:</strong> When llama.cpp is running, the model occupies ~14GB of RAM on the Windows PC. Running Hermes sessions that also hit this same endpoint works fine — they share the model. But if you try to run a <em>separate</em> local model instance (e.g., Ollama) simultaneously, you'll likely OOM.
+<strong>Warning:</strong> When llama.cpp is running, the model occupies ~14GB of RAM on the Windows PC. Running Hermes sessions that also hit this same endpoint works fine — they share the model. But if you try to run a <em>separate</em> local model instance (e.g., Ollama) simultaneously, you will likely OOM.
 </div>
 
-<h2>🔄 Session Management (How Concurrent Clients Work)</h2>
+<h2>Session Management (How Concurrent Clients Work)</h2>
 
 <div class="card">
 <h3>Each HTTP Request is Independent</h3>
 <p>llama.cpp serves <strong>statelessly</strong>. Each <code>/v1/chat/completions</code> or <code>/v1/responses</code> request is a standalone operation:</p>
 <ol>
-<li>Codex on Mac sends a request with its own <code>messages</code> array → llama.cpp processes it → returns response → <strong>KV cache freed</strong></li>
-<li>Codex on Linux sends a request with its own <code>messages</code> array → llama.cpp processes it → returns response → <strong>KV cache freed</strong></li>
+<li>Codex on Mac sends a request with its own <code>messages</code> array — llama.cpp processes it — returns response — <strong>KV cache freed</strong></li>
+<li>Codex on Linux sends a request with its own <code>messages</code> array — llama.cpp processes it — returns response — <strong>KV cache freed</strong></li>
 </ol>
-<p><strong>No cross-contamination between clients.</strong> Each request carries its complete conversation history in the <code>messages</code> payload. The model doesn't "remember" between HTTP calls unless you explicitly include prior messages.</p>
+<p><strong>No cross-contamination between clients.</strong> Each request carries its complete conversation history in the <code>messages</code> payload. The model does not "remember" between HTTP calls unless you explicitly include prior messages.</p>
 </div>
 
 <div class="card">
@@ -191,10 +305,10 @@ codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
 </div>
 
 <div class="info">
-<strong>Summary:</strong> Multiple clients = no OOM risk from context stacking. Each client's conversation is self-contained in its own <code>messages</code> array. The model weights are shared; the KV cache is reused per-request. Think of llama.cpp as a stateless function: <code>f(messages) → response</code>.
+<strong>Summary:</strong> Multiple clients = no OOM risk from context stacking. Each client's conversation is self-contained in its own <code>messages</code> array. The model weights are shared; the KV cache is reused per-request. Think of llama.cpp as a stateless function: <code>f(messages) -&gt; response</code>.
 </div>
 
-<h2>🌐 Network Details</h2>
+<h2>Network Details</h2>
 
 <div class="info">
 <strong>ZeroTier Network:</strong> <code>my-first-network</code> (ID: <code>3b19b3a716937e29</code>)<br>
@@ -203,8 +317,8 @@ codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
 
 <table>
 <tr><th>Device</th><th>ZT IP</th><th>Public IP</th><th>Platform</th><th>Role</th></tr>
-<tr><td>Windows PC</td><td><code>10.88.140.94</code></td><td>79.159.104.225:3402</td><td>Windows · v1.16.1</td><td><span class="badge bg">Inference Host</span></td></tr>
-<tr><td>Linux Laptop</td><td><code>10.88.140.135</code></td><td>79.159.104.225:54811</td><td>Linux · v1.16.1</td><td><span class="badge bp">Client</span></td></tr>
+<tr><td>Windows PC</td><td><code>10.88.140.94</code></td><td>79.159.104.225:3402</td><td>Windows, v1.16.1</td><td><span class="badge bg">Inference Host</span></td></tr>
+<tr><td>Linux Laptop</td><td><code>10.88.140.135</code></td><td>79.159.104.225:54811</td><td>Linux, v1.16.1</td><td><span class="badge bp">Client</span></td></tr>
 <tr><td>Mac BookPro</td><td><em>TBD</em></td><td><em>TBD</em></td><td><em>—</em></td><td><span class="badge bp">Client</span></td></tr>
 </table>
 
@@ -216,10 +330,10 @@ codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
 <strong>ZeroTier Firewall Note:</strong> Ensure port <code>4000</code> is accessible over the ZeroTier interface. Windows Firewall may block incoming connections — add a rule for TCP 4000 on the ZeroTier network profile.
 </div>
 
-<h2>📋 Implementation Steps</h2>
+<h2>Implementation Steps</h2>
 
 <div class="machine">
-<h3>🖥️ Machine 1: Windows PC (Inference Host)</h3>
+<h3>Machine 1: Windows PC (Inference Host)</h3>
 
 <div class="step">
 <h3>Step 1: Install LiteLLM Proxy</h3>
@@ -300,7 +414,7 @@ nssm start LiteLLMProxy</code></pre>
 </div>
 
 <div class="machine">
-<h3>🐧 Machine 2: Linux Laptop (Client)</h3>
+<h3>Machine 2: Linux Laptop (Client)</h3>
 
 <div class="step">
 <h3>Step 1: Verify ZeroTier Connectivity</h3>
@@ -312,38 +426,52 @@ curl http://10.88.140.94:4000/v1/models</code></pre>
 </div>
 
 <div class="step">
-<h3>Step 2: Configure Codex CLI</h3>
-<p>Create <code>~/.codex/config.toml</code>:</p>
-<pre><code>[openai]
+<h3>Step 2: Install Codex Client Config</h3>
+<pre><code># From the zerotier-llm-proxy repo:
+./scripts/unix/install-codex-client-config.sh
+
+# This registers the qwen36-zerotier provider, profile, and model catalog.
+# It does NOT change the global default model.</code></pre>
+<p>Or manually add to <code>~/.codex/config.toml</code>:</p>
+<pre><code>[model_providers.qwen36-zerotier]
+name = "qwen36 via Windows ZeroTier LiteLLM"
 base_url = "http://10.88.140.94:4000/v1"
-api_key = "***"</code></pre>
+wire_api = "responses"</code></pre>
 </div>
 
 <div class="step">
 <h3>Step 3: Test Codex CLI</h3>
-<pre><code>codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
+<pre><code># Using the profile (required for CLI):
+codex exec --profile qwen36-zerotier "Say hello"</code></pre>
 <p>Should return a response from the model. No websocket errors expected when using LiteLLM proxy.</p>
 </div>
 
 <div class="step">
-<h3>Step 4: (Optional) Codex Desktop App via app-server</h3>
-<pre><code># Run app-server on Linux, bound to ZeroTier
-codex app-server --listen ws://0.0.0.0:8081
+<h3>Step 4: Codex Desktop App — Shell Wrapper</h3>
+<p>The Desktop app does not pass <code>--profile</code> when spawning sessions. To make <code>qwen36-turbo-hermes</code> selectable from the app's model dropdown, install the shell wrapper (see "Codex Desktop App Integration" section above).</p>
+<pre><code># After installing the wrapper:
+# 1. Restart Codex Desktop
+# 2. Select "Qwen36 Turbo Hermes" from the model dropdown
+# 3. Start a session — it routes through qwen36-zerotier automatically</code></pre>
+</div>
 
-# On another machine, connect Codex App to:
-# ws://&lt;linux_zerotier_ip&gt;:8081</code></pre>
+<div class="step">
+<h3>Step 5: Verify End-to-End</h3>
+<pre><code># Run the verification script:
+./scripts/unix/verify-client.sh</code></pre>
+<p>This checks ZeroTier routing, <code>/v1/models</code>, <code>/v1/chat/completions</code>, and <code>/v1/responses</code>.</p>
 </div>
 
 </div>
 
 <div class="machine">
-<h3>🍎 Machine 3: Mac BookPro (Client)</h3>
+<h3>Machine 3: Mac BookPro (Client)</h3>
 
 <div class="step">
-<h3>Step 1: Install ZeroTier & Join Network</h3>
+<h3>Step 1: Install ZeroTier and Join Network</h3>
 <pre><code># Install ZeroTier from zerotier.com
 # Join the same network as Windows PC and Linux laptop
-# Note your assigned IP (e.g., 172.24.x.x)</code></pre>
+# Note your assigned IP (e.g., 10.88.x.x)</code></pre>
 </div>
 
 <div class="step">
@@ -357,10 +485,11 @@ codex --version</code></pre>
 
 <div class="step">
 <h3>Step 3: Configure Codex</h3>
-<p>Create <code>~/.codex/config.toml</code>:</p>
-<pre><code>[openai]
+<p>Add to <code>~/.codex/config.toml</code>:</p>
+<pre><code>[model_providers.qwen36-zerotier]
+name = "qwen36 via Windows ZeroTier LiteLLM"
 base_url = "http://10.88.140.94:4000/v1"
-api_key = "***"</code></pre>
+wire_api = "responses"</code></pre>
 </div>
 
 <div class="step">
@@ -368,20 +497,21 @@ api_key = "***"</code></pre>
 <pre><code># Test proxy reachability
 curl http://10.88.140.94:4000/v1/models
 
-# Test Codex CLI
-codex exec --model qwen36-turbo-hermes "Say hello"</code></pre>
+# Test Codex CLI (with profile):
+codex exec --profile qwen36-zerotier "Say hello"</code></pre>
 </div>
 
 <div class="step">
-<h3>Step 5: (Optional) Codex Desktop App</h3>
+<h3>Step 5: Codex Desktop App</h3>
 <pre><code># Install Codex App from openai.com/codex
-# The app reads ~/.codex/config.toml automatically
-# Or use codex app-server on Linux/Mac and connect the app to it</code></pre>
+# The app reads ~/.codex/config.toml automatically.
+# For qwen36-turbo-hermes to work in the app, install the shell wrapper
+# (see "Codex Desktop App Integration" section above).</code></pre>
 </div>
 
 </div>
 
-<h2>📄 Config Files (Copy-Paste Ready)</h2>
+<h2>Config Files (Copy-Paste Ready)</h2>
 
 <div class="card">
 <h3>LiteLLM Config (<code>C:\Users\Juan\.litellm\config.yaml</code>)</h3>
@@ -397,42 +527,57 @@ env_vars:
 </div>
 
 <div class="card">
-<h3>Codex Config (<code>~/.codex/config.toml</code>) — Linux & Mac</h3>
-<pre><code>[openai]
+<h3>Codex Provider Config (<code>~/.codex/config.toml</code>) — Linux and Mac</h3>
+<pre><code>[model_providers.qwen36-zerotier]
+name = "qwen36 via Windows ZeroTier LiteLLM"
 base_url = "http://10.88.140.94:4000/v1"
-api_key = "***"</code></pre>
+wire_api = "responses"</code></pre>
+<p>Add this section to your existing <code>config.toml</code>. Do not replace the file — just append the section.</p>
 </div>
 
-<h2>🔧 API Endpoints Summary</h2>
+<div class="card">
+<h3>Codex Profile (<code>~/.codex/qwen36-zerotier.config.toml</code>)</h3>
+<pre><code>model = "qwen36-turbo-hermes"
+model_provider = "qwen36-zerotier"
+model_context_window = 65536
+model_max_output_tokens = 8192</code></pre>
+<p>Use with <code>codex exec --profile qwen36-zerotier "..."</code>. The shell wrapper (see above) makes this automatic for the Desktop app.</p>
+</div>
+
+<h2>API Endpoints Summary</h2>
 
 <table>
 <tr><th>Endpoint</th><th>Served By</th><th>Purpose</th><th>Status</th></tr>
-<tr><td><code>/v1/models</code></td><td>LiteLLM :4000</td><td>Model listing</td><td><span class="badge bg">Works ✅</span></td></tr>
-<tr><td><code>/v1/chat/completions</code></td><td>LiteLLM → llama.cpp</td><td>Standard OpenAI API</td><td><span class="badge bo">Auth quirk ⚠️</span></td></tr>
-<tr><td><code>/v1/responses</code></td><td>LiteLLM → llama.cpp</td><td>Codex Responses API</td><td><span class="badge bg">Works ✅</span></td></tr>
+<tr><td><code>/v1/models</code></td><td>LiteLLM :4000</td><td>Model listing</td><td><span class="badge bg">Works</span></td></tr>
+<tr><td><code>/v1/chat/completions</code></td><td>LiteLLM to llama.cpp</td><td>Standard OpenAI API</td><td><span class="badge bo">Auth quirk</span></td></tr>
+<tr><td><code>/v1/responses</code></td><td>LiteLLM to llama.cpp</td><td>Codex Responses API</td><td><span class="badge bg">Works</span></td></tr>
 </table>
 
-<h2>🚨 Known Issues & Mitigations</h2>
+<h2>Known Issues and Mitigations</h2>
 
 <div class="warn">
 <strong>Chat Completions Auth Quirk:</strong> LiteLLM proxy sometimes fails to pass credentials through to llama.cpp for <code>/v1/chat/completions</code>. The <code>/v1/responses</code> endpoint works cleanly. <strong>Mitigation:</strong> Set <code>OPENAI_API_KEY</code> as an environment variable when starting the proxy process (see Step 4 above).
 </div>
 
 <div class="warn">
-<strong>Concurrent Request Latency:</strong> llama.cpp processes requests sequentially. When Hermes and Codex both send requests, they queue. Expect 10–30s latency per request for a 26B model. Don't run heavy tasks simultaneously.
+<strong>Concurrent Request Latency:</strong> llama.cpp processes requests sequentially. When Hermes and Codex both send requests, they queue. Expect 10-30s latency per request for a 26B model. Do not run heavy tasks simultaneously.
 </div>
 
 <div class="err">
-<strong>Windows Firewall:</strong> If clients can't reach port 4000 over ZeroTier, Windows Firewall may be blocking it. Add an inbound rule for TCP 4000 (see Step 6 above).
+<strong>Windows Firewall:</strong> If clients cannot reach port 4000 over ZeroTier, Windows Firewall may be blocking it. Add an inbound rule for TCP 4000 (see Step 6 above).
 </div>
 
-<h2>📊 Token Budget Notes</h2>
+<div class="warn">
+<strong>npm update breaks the wrapper:</strong> Running <code>npm update -g @openai/codex</code> overwrites <code>~/.local/bin/codex</code>, replacing the shell wrapper with the original npm script. Restore with <code>~/.codex/restore-codex-wrapper.sh</code>.
+</div>
+
+<h2>Token Budget Notes</h2>
 
 <div class="info">
 <strong>Context Window:</strong> Your model has <code>n_ctx: 65536</code> tokens. Codex sessions can be long — monitor context usage. Ensure llama.cpp is started with adequate <code>--ctx-size</code> (at least 32768, ideally 65536).
 </div>
 
-<h2>✅ Verification Checklist</h2>
+<h2>Verification Checklist</h2>
 
 <pre><code>
 WINDOWS PC (Inference Host):
@@ -445,22 +590,25 @@ WINDOWS PC (Inference Host):
 
 LINUX LAPTOP (Client):
 [ ] ZeroTier connected, can ping 10.88.140.94
-[ ] ~/.codex/config.toml created with base_url = http://10.88.140.94:4000/v1
-[ ] codex exec --model qwen36-turbo-hermes "Say hello" works
+[ ] Provider registered in ~/.codex/config.toml ([model_providers.qwen36-zerotier])
+[ ] Profile installed at ~/.codex/qwen36-zerotier.config.toml
+[ ] Model catalog installed at ~/.codex/model-catalogs/qwen36-plus-bundled.json
+[ ] codex exec --profile qwen36-zerotier "Say hello" works
+[ ] Shell wrapper installed at ~/.local/bin/codex (for Desktop app)
+[ ] Codex Desktop app: selecting qwen36-turbo-hermes works without errors
 
 MAC BOOKPRO (Client):
-[ ] ZeroTier installed & joined network
+[ ] ZeroTier installed and joined network
 [ ] Codex CLI installed: npm install -g @openai/codex
-[ ] ~/.codex/config.toml created with base_url = http://10.88.140.94:4000/v1
-[ ] codex exec --model qwen36-turbo-hermes "Say hello" works
+[ ] Provider registered in ~/.codex/config.toml
+[ ] codex exec --profile qwen36-zerotier "Say hello" works
 
 CROSS-CUTTING:
 [ ] /v1/responses works through proxy (Codex Responses API)
 [ ] No websocket errors in Codex output
-[ ] Hermes can still connect to llama.cpp (direct or via proxy)
-</code></pre>
+[ ] Hermes can still connect to llama.cpp (direct or via proxy)</code></pre>
 
-<h2>🔍 Troubleshooting</h2>
+<h2>Troubleshooting</h2>
 
 <div class="card">
 <h3>"Connection refused" from clients</h3>
@@ -473,14 +621,22 @@ CROSS-CUTTING:
 <h3>"Missing credentials" error</h3>
 <ul>
   <li>Ensure <code>OPENAI_API_KEY</code> env var is set when starting LiteLLM</li>
-  <li>The value can be anything (e.g., <code>***</code>) — llama.cpp doesn't validate it</li>
+  <li>The value can be anything (e.g., <code>***</code>) — llama.cpp does not validate it</li>
 </ul>
 
 <h3>Codex websocket errors</h3>
 <ul>
   <li>If you see websocket warnings, Codex is NOT using the LiteLLM proxy</li>
-  <li>Verify <code>~/.codex/config.toml</code> has <code>base_url = "http://10.88.140.94:4000/v1"</code></li>
+  <li>Verify <code>~/.codex/config.toml</code> has the <code>[model_providers.qwen36-zerotier]</code> section</li>
   <li>LiteLLM's /v1/responses endpoint handles this cleanly — no websocket needed</li>
+</ul>
+
+<h3>Desktop app routes to OpenAI instead of qwen36-zerotier</h3>
+<ul>
+  <li>The shell wrapper is missing or was overwritten by npm update</li>
+  <li>Restore: <code>~/.codex/restore-codex-wrapper.sh</code></li>
+  <li>Verify: <code>head -1 ~/.local/bin/codex</code> should show the wrapper shebang, not the npm script</li>
+  <li>Restart Codex Desktop after restoring the wrapper</li>
 </ul>
 
 <h3>llama.cpp not responding through proxy</h3>
@@ -488,13 +644,20 @@ CROSS-CUTTING:
   <li>Verify llama.cpp is running: <code>curl http://127.0.0.1:8080/v1/models</code></li>
   <li>Check LiteLLM config has correct <code>api_base: http://127.0.0.1:8080/v1</code></li>
 </ul>
+
+<h3>ZeroTier routing wrong interface</h3>
+<ul>
+  <li>If <code>ip route get 10.88.140.94</code> shows your Wi-Fi gateway instead of a ZeroTier device:</li>
+  <li>Run <code>sudo zerotier-cli set 3b19b3a716937e29 allowManaged=1</code></li>
+  <li>Reconnect ZeroTier and verify again</li>
+</ul>
 </div>
 
 <hr style="border-color: var(--border); margin: 2rem 0;">
 
 <p style="text-align:center; color: var(--border); font-size: .85rem;">
-WatsonOW ZeroTier LLM Bootstrap · Architecture + Implementation Guide<br>
-Windows Host: 10.88.140.94 · Linux Client: 10.88.140.135 · Mac Client: TBD
+WatsonOW ZeroTier LLM Bootstrap - Architecture + Implementation Guide<br>
+Windows Host: 10.88.140.94 - Linux Client: 10.88.140.135 - Mac Client: TBD
 </p>
 
 </body>
