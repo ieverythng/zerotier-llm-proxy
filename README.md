@@ -96,6 +96,12 @@ Run a backend restart sweep that records throughput and VRAM, then restores the 
 .\scripts\windows\Invoke-QwenContextSweep.ps1 -ServerContextSizes 65536,98304 -PromptContextTokens 0,8192,32768,65536
 ```
 
+Run a KV-cache and batch sweep at a fixed context size:
+
+```powershell
+.\scripts\windows\Invoke-QwenKvCacheSweep.ps1 -ContextSize 65536 -CacheTypeV turbo2,turbo3,turbo4,q8_0 -PromptContextTokens 0,8192
+```
+
 Measured on this RTX 5070 Ti host, `65536` is the practical default. `98304` and `131072` can start, but they heavily trade throughput and VRAM headroom for context:
 
 | llama ctx | Status | Notes |
