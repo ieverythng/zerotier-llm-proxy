@@ -62,14 +62,22 @@ if ($ApiKey) {
 
 $parsedContextTokens = @()
 foreach ($item in $ContextTokens) {
+    if ($null -eq $item) {
+        continue
+    }
+
     foreach ($part in ([string]$item -split ",")) {
         $trimmed = $part.Trim()
-        if (-not $trimmed) {
+        if ($trimmed -eq "") {
             continue
         }
 
         $parsedContextTokens += [int]$trimmed
     }
+}
+
+if ($parsedContextTokens.Count -eq 0) {
+    throw "No context token values were provided."
 }
 
 if (-not $OutCsv) {

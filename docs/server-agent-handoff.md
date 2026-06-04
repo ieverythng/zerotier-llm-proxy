@@ -37,6 +37,7 @@ Measured operating points on this host:
 - `65536`: practical default. After restore, llama.cpp reported `n_ctx=65536`; `nvidia-smi` showed about `14856 MiB / 16303 MiB` used.
 - `98304`: verified start. A `98304` synthetic context benchmark through LiteLLM completed in about `152.53s` for a short answer.
 - `131072`: verified start. llama.cpp reported `n_ctx=131072`; `nvidia-smi` showed about `15840 MiB / 16303 MiB` used and sustained `100%` GPU during the interrupted full-context request.
+- Use `scripts/windows/Invoke-QwenContextSweep.ps1` for repeatable context sweeps. It stops/restarts llama.cpp per context size, records VRAM snapshots, runs the LiteLLM benchmark, writes `_tmp/bench/context-sweep-*/summary.csv`, and restores `65536` by default.
 
 Recommended workflow:
 

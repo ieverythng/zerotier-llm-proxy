@@ -90,6 +90,12 @@ Measure proxy throughput across short and long synthetic contexts:
 .\scripts\windows\Measure-Qwen36ProxyThroughput.ps1 -ContextTokens 0,8192,32768,65536
 ```
 
+Run a backend restart sweep that records throughput and VRAM, then restores the default 65k server:
+
+```powershell
+.\scripts\windows\Invoke-QwenContextSweep.ps1 -ServerContextSizes 65536,98304 -PromptContextTokens 0,8192,32768,65536
+```
+
 Measured on this RTX 5070 Ti host, `65536` is the practical default. `98304` and `131072` can start, but they heavily trade throughput and VRAM headroom for context:
 
 | llama ctx | Status | Notes |
