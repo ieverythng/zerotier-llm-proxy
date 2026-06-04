@@ -44,4 +44,5 @@ Recommended workflow:
 - Restart with `-ContextSize 98304` only when the session needs a one-off large-context recovery or audit.
 - Use `-ContextSize 131072` only for stress testing; it leaves roughly `100-200 MiB` VRAM free and can stall the shared endpoint.
 - Preserve cross-compaction knowledge in a small session ledger outside the model request. Keep the ledger to stable facts, current goals, known constraints, unresolved decisions, and file paths. Inject the ledger summary after compaction instead of depending on larger server context alone.
+- Use `docs/session-ledger.md` and `scripts/windows/Update-QwenSessionLedger.ps1` for a repo-local ledger workflow. The default ledger path is `_tmp/session-ledger.md`, which stays untracked.
 

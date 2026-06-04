@@ -100,6 +100,8 @@ Measured on this RTX 5070 Ti host, `65536` is the practical default. `98304` and
 
 For Hermes/Discord sessions, keep a compact external session ledger in the repo or task workspace and paste only the current working set plus the ledger summary after compaction. Treat the huge context modes as recovery or audit tools, not as the normal endpoint setting.
 
+Use [`docs/session-ledger.md`](docs/session-ledger.md) and `scripts/windows/Update-QwenSessionLedger.ps1` to maintain that compact state outside the model request.
+
 To add the selectable profile to this Windows Codex install without changing the default model:
 
 ```powershell
