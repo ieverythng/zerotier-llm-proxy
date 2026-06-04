@@ -72,6 +72,12 @@ The Windows host runs `llama.cpp` locally on `127.0.0.1:8080` and exposes LiteLL
 .\scripts\windows\Test-Qwen36Proxy.ps1
 ```
 
+To start the whole Windows stack from one command, including the existing `llama.cpp` turbo Hermes launcher when needed:
+
+```powershell
+.\scripts\windows\Start-Qwen36ZeroTierStack.ps1
+```
+
 To add the selectable profile to this Windows Codex install without changing the default model:
 
 ```powershell
