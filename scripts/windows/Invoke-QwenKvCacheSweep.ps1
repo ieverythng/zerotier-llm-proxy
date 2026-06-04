@@ -31,6 +31,30 @@ $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $outDir = Join-Path $repoRoot "_tmp\bench\kv-sweep-$stamp"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
+function Convert-StringList {
+    param([string[]]$Values)
+
+    $parsed = @()
+    foreach ($item in $Values) {
+        if ($null -eq $item) {
+            continue
+        }
+
+        foreach ($part in ([string]$item -split ",")) {
+            $trimmed = $part.Trim()
+            if ($trimmed -ne "") {
+                $parsed += $trimmed
+            }
+        }
+    }
+
+    if ($parsed.Count -eq 0) {
+        throw "No values were provided."
+    }
+
+    return $parsed
+}
+
 function Get-GpuSnapshot {
     $csv = & nvidia-smi --query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu,power.draw --format=csv,noheader,nounits
     $parts = $csv -split "\s*,\s*"
@@ -95,46 +119,92 @@ function Restore-Llama {
         -Metrics
 }
 
+$parsedCacheTypeK = @(Convert-StringList -Values $CacheTypeK)
+$parsedCacheTypeV = @(Convert-StringList -Values $CacheTypeV)
 $summaryRows = @()
 try {
-    foreach ($k in $CacheTypeK) {
-        foreach ($v in $CacheTypeV) {
+    foreach ($k in $parsedCacheTypeK) {
+        foreach ($v in $parsedCacheTypeV) {
             foreach ($batch in $BatchSize) {
                 foreach ($ubatch in $UBatchSize) {
                     $label = "ctx{0}-k{1}-v{2}-b{3}-ub{4}" -f $ContextSize, $k, $v, $batch, $ubatch
                     Write-Host "=== $label ==="
-                    Stop-Llama
-                    Start-TunedLlama -K $k -V $v -Batch $batch -UBatch $ubatch
-
-                    $gpuBefore = Get-GpuSnapshot
                     $benchCsv = Join-Path $outDir ("throughput-{0}.csv" -f $label)
-                    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $measureScript `
-                        -BaseUrl "http://127.0.0.1:$LiteLLMPort/v1" `
-                        -ApiKey $ApiKey `
-                        -Model $Model `
-                        -ContextTokens ($PromptContextTokens -join ",") `
-                        -RequestsPerContext $RequestsPerContext `
-                        -MaxOutputTokens $MaxOutputTokens `
-                        -OutCsv $benchCsv
+                    $status = "ok"
+                    $errorMessage = ""
+                    $gpuBefore = $null
+                    $gpuAfter = $null
 
-                    $gpuAfter = Get-GpuSnapshot
-                    foreach ($row in (Import-Csv -LiteralPath $benchCsv)) {
+                    try {
+                        Stop-Llama
+                        Start-TunedLlama -K $k -V $v -Batch $batch -UBatch $ubatch
+
+                        $gpuBefore = Get-GpuSnapshot
+                        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $measureScript `
+                            -BaseUrl "http://127.0.0.1:$LiteLLMPort/v1" `
+                            -ApiKey $ApiKey `
+                            -Model $Model `
+                            -ContextTokens ($PromptContextTokens -join ",") `
+                            -RequestsPerContext $RequestsPerContext `
+                            -MaxOutputTokens $MaxOutputTokens `
+                            -OutCsv $benchCsv
+
+                        $gpuAfter = Get-GpuSnapshot
+                    }
+                    catch {
+                        $status = "failed"
+                        $errorMessage = $_.Exception.Message
+                        Write-Warning ("{0} failed: {1}" -f $label, $errorMessage)
+                    }
+
+                    if ($status -eq "ok" -and -not (Test-Path -LiteralPath $benchCsv)) {
+                        $status = "failed"
+                        $errorMessage = "Benchmark CSV was not created."
+                    }
+
+                    if ($status -eq "ok") {
+                        foreach ($row in (Import-Csv -LiteralPath $benchCsv)) {
+                            $summaryRows += [pscustomobject]@{
+                                status = $status
+                                error = $errorMessage
+                                context_size = $ContextSize
+                                cache_type_k = $k
+                                cache_type_v = $v
+                                batch_size = $batch
+                                ubatch_size = $ubatch
+                                parallel = $Parallel
+                                prompt_context_target = [int]$row.context_tokens_target
+                                elapsed_s = [double]$row.elapsed_s
+                                completion_tokens = [int]$row.completion_tokens
+                                completion_tok_s = [double]$row.completion_tok_s
+                                total_tok_s = [double]$row.total_tok_s
+                                gpu_used_before_mib = $gpuBefore.gpu_memory_used_mib
+                                gpu_free_before_mib = $gpuBefore.gpu_memory_free_mib
+                                gpu_used_after_mib = $gpuAfter.gpu_memory_used_mib
+                                gpu_free_after_mib = $gpuAfter.gpu_memory_free_mib
+                                bench_csv = $benchCsv
+                            }
+                        }
+                    }
+                    else {
                         $summaryRows += [pscustomobject]@{
+                            status = $status
+                            error = $errorMessage
                             context_size = $ContextSize
                             cache_type_k = $k
                             cache_type_v = $v
                             batch_size = $batch
                             ubatch_size = $ubatch
                             parallel = $Parallel
-                            prompt_context_target = [int]$row.context_tokens_target
-                            elapsed_s = [double]$row.elapsed_s
-                            completion_tokens = [int]$row.completion_tokens
-                            completion_tok_s = [double]$row.completion_tok_s
-                            total_tok_s = [double]$row.total_tok_s
-                            gpu_used_before_mib = $gpuBefore.gpu_memory_used_mib
-                            gpu_free_before_mib = $gpuBefore.gpu_memory_free_mib
-                            gpu_used_after_mib = $gpuAfter.gpu_memory_used_mib
-                            gpu_free_after_mib = $gpuAfter.gpu_memory_free_mib
+                            prompt_context_target = ""
+                            elapsed_s = ""
+                            completion_tokens = ""
+                            completion_tok_s = ""
+                            total_tok_s = ""
+                            gpu_used_before_mib = if ($gpuBefore) { $gpuBefore.gpu_memory_used_mib } else { "" }
+                            gpu_free_before_mib = if ($gpuBefore) { $gpuBefore.gpu_memory_free_mib } else { "" }
+                            gpu_used_after_mib = if ($gpuAfter) { $gpuAfter.gpu_memory_used_mib } else { "" }
+                            gpu_free_after_mib = if ($gpuAfter) { $gpuAfter.gpu_memory_free_mib } else { "" }
                             bench_csv = $benchCsv
                         }
                     }
@@ -154,4 +224,3 @@ finally {
 $summaryCsv = Join-Path $outDir "summary.csv"
 $summaryRows | Export-Csv -NoTypeInformation -Path $summaryCsv
 Write-Host "Wrote $summaryCsv"
-
