@@ -4,7 +4,11 @@ param(
     [int]$LlamaPort = 8080,
     [int]$LiteLLMPort = 4000,
     [string]$Model = "qwen36-turbo-hermes",
+    [string]$Profile = "hermes-qwen36-64k",
+    [int]$ContextSize = 65536,
+    [string]$ModelPath = "",
     [string]$BackendKey = "llama.cpp",
+    [switch]$Metrics,
     [switch]$SkipLlamaStart
 )
 
@@ -52,7 +56,24 @@ if (-not $hasModel -and -not $SkipLlamaStart) {
     }
 
     Write-Host "Starting llama.cpp via $resolvedLlamaScript"
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $resolvedLlamaScript -Port $LlamaPort
+    $llamaArgs = @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $resolvedLlamaScript,
+        "-Port", $LlamaPort,
+        "-Profile", $Profile,
+        "-ContextSize", $ContextSize
+    )
+
+    if ($ModelPath) {
+        $llamaArgs += @("-ModelPath", $ModelPath)
+    }
+
+    if ($Metrics) {
+        $llamaArgs += "-Metrics"
+    }
+
+    & powershell.exe @llamaArgs
 
     $models = Test-JsonEndpoint -Uri "$llamaBaseUrl/models"
     $hasModel = $models -and (($models.data | ForEach-Object { $_.id }) -contains $Model)

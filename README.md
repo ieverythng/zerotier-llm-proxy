@@ -78,6 +78,18 @@ To start the whole Windows stack from one command, including the existing `llama
 .\scripts\windows\Start-Qwen36ZeroTierStack.ps1
 ```
 
+The stack launcher forwards Hermes tuning knobs to `C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\start_turbo_hermes.ps1`:
+
+```powershell
+.\scripts\windows\Start-Qwen36ZeroTierStack.ps1 -Profile hermes-qwen36-64k -ContextSize 65536 -Metrics
+```
+
+Measure proxy throughput across short and long synthetic contexts:
+
+```powershell
+.\scripts\windows\Measure-Qwen36ProxyThroughput.ps1 -ContextTokens 0,8192,32768,65536
+```
+
 To add the selectable profile to this Windows Codex install without changing the default model:
 
 ```powershell
