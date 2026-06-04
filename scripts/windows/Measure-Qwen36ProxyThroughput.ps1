@@ -2,7 +2,7 @@ param(
     [string]$BaseUrl = "http://127.0.0.1:4000/v1",
     [string]$ApiKey = "local-qwen36",
     [string]$Model = "qwen36-turbo-hermes",
-    [int[]]$ContextTokens = @(0, 8192, 32768, 65536),
+    [string[]]$ContextTokens = @("0", "8192", "32768", "65536"),
     [int]$RequestsPerContext = 2,
     [int]$MaxOutputTokens = 128,
     [double]$Temperature = 0.2,
@@ -60,6 +60,18 @@ if ($ApiKey) {
     $headers.Authorization = "Bearer $ApiKey"
 }
 
+$parsedContextTokens = @()
+foreach ($item in $ContextTokens) {
+    foreach ($part in ([string]$item -split ",")) {
+        $trimmed = $part.Trim()
+        if (-not $trimmed) {
+            continue
+        }
+
+        $parsedContextTokens += [int]$trimmed
+    }
+}
+
 if (-not $OutCsv) {
     $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
     $outDir = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..")) "_tmp\bench"
@@ -73,7 +85,7 @@ if ($outParent) {
 }
 
 $rows = @()
-foreach ($contextTokenCount in $ContextTokens) {
+foreach ($contextTokenCount in $parsedContextTokens) {
     $context = New-SyntheticContext -ApproxTokens $contextTokenCount
     for ($request = 1; $request -le $RequestsPerContext; $request++) {
         $body = [ordered]@{

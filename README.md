@@ -90,6 +90,16 @@ Measure proxy throughput across short and long synthetic contexts:
 .\scripts\windows\Measure-Qwen36ProxyThroughput.ps1 -ContextTokens 0,8192,32768,65536
 ```
 
+Measured on this RTX 5070 Ti host, `65536` is the practical default. `98304` and `131072` can start, but they heavily trade throughput and VRAM headroom for context:
+
+| llama ctx | Status | Notes |
+|---:|---|---|
+| `65536` | Default | About 14.9 GiB VRAM used at idle, ~1.1 GiB free, usable Hermes latency. |
+| `98304` | Special large-context mode | Starts successfully; a ~98k synthetic context took about 152s for a short response. |
+| `131072` | Stress mode | Starts successfully and nearly fills VRAM; expect queueing or long stalls under full-context requests. |
+
+For Hermes/Discord sessions, keep a compact external session ledger in the repo or task workspace and paste only the current working set plus the ledger summary after compaction. Treat the huge context modes as recovery or audit tools, not as the normal endpoint setting.
+
 To add the selectable profile to this Windows Codex install without changing the default model:
 
 ```powershell

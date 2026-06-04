@@ -32,3 +32,16 @@ Current runtime mapping:
 - The default Hermes profile is `hermes-qwen36-64k` with `-ContextSize 65536`, `q8_0` K cache, `turbo2` V cache, Flash Attention on, and `-np 1`.
 - Use `scripts/windows/Measure-Qwen36ProxyThroughput.ps1` after each context or KV-cache change to compare completion tok/s through the same LiteLLM `/v1/responses` path used by Codex.
 
+Measured operating points on this host:
+
+- `65536`: practical default. After restore, llama.cpp reported `n_ctx=65536`; `nvidia-smi` showed about `14856 MiB / 16303 MiB` used.
+- `98304`: verified start. A `98304` synthetic context benchmark through LiteLLM completed in about `152.53s` for a short answer.
+- `131072`: verified start. llama.cpp reported `n_ctx=131072`; `nvidia-smi` showed about `15840 MiB / 16303 MiB` used and sustained `100%` GPU during the interrupted full-context request.
+
+Recommended workflow:
+
+- Run normal Hermes/Discord traffic at `65536`.
+- Restart with `-ContextSize 98304` only when the session needs a one-off large-context recovery or audit.
+- Use `-ContextSize 131072` only for stress testing; it leaves roughly `100-200 MiB` VRAM free and can stall the shared endpoint.
+- Preserve cross-compaction knowledge in a small session ledger outside the model request. Keep the ledger to stable facts, current goals, known constraints, unresolved decisions, and file paths. Inject the ledger summary after compaction instead of depending on larger server context alone.
+
