@@ -144,6 +144,12 @@ For a deliberate large-context run, match the installed Codex profile to the ser
 .\scripts\windows\Install-CodexQwen36Config.ps1 -ContextWindow 98304
 ```
 
+Or switch the whole Windows mode in one command, including restart, Codex profile install, and verification:
+
+```powershell
+.\scripts\windows\Switch-Qwen36ContextMode.ps1 -ContextWindow 65536
+```
+
 Restart Codex Desktop after installing the provider so the model/provider registry is reloaded.
 
 ## npm Update Warning
