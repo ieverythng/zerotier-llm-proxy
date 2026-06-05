@@ -2,6 +2,8 @@
 set -euo pipefail
 
 BASE_URL="${LLM_PROXY_BASE_URL:-http://10.88.140.94:4000/v1}"
+CONTEXT_WINDOW="${LLM_CONTEXT_WINDOW:-65536}"
+MAX_CONTEXT_WINDOW="${LLM_MAX_CONTEXT_WINDOW:-$CONTEXT_WINDOW}"
 CONFIG_DIR="${CODEX_CONFIG_DIR:-$HOME/.codex}"
 CONFIG_FILE="${CODEX_CONFIG_FILE:-$CONFIG_DIR/config.toml}"
 PROFILE_FILE="${CODEX_PROFILE_FILE:-$CONFIG_DIR/qwen36-zerotier.config.toml}"
@@ -48,13 +50,15 @@ PY
 mkdir -p "$(dirname "$CATALOG_FILE")"
 TMP_CATALOG="$(mktemp)"
 if codex debug models --bundled > "$TMP_CATALOG"; then
-  python3 - "$TMP_CATALOG" "$CATALOG_FILE" <<'PY'
+  python3 - "$TMP_CATALOG" "$CATALOG_FILE" "$CONTEXT_WINDOW" "$MAX_CONTEXT_WINDOW" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 source = Path(sys.argv[1])
 target = Path(sys.argv[2])
+context_window = int(sys.argv[3])
+max_context_window = int(sys.argv[4])
 data = json.loads(source.read_text(encoding="utf-8"))
 base = dict(data["models"][0])
 base.update(
@@ -71,8 +75,8 @@ base.update(
         "additional_speed_tiers": [],
         "service_tiers": [],
         "availability_nux": None,
-        "context_window": 65536,
-        "max_context_window": 65536,
+        "context_window": context_window,
+        "max_context_window": max_context_window,
     }
 )
 data["models"] = [m for m in data["models"] if m.get("slug") != "qwen36-turbo-hermes"]
@@ -91,7 +95,7 @@ fi
 cat > "$PROFILE_FILE" <<EOF
 model = "qwen36-turbo-hermes"
 model_provider = "qwen36-zerotier"
-model_context_window = 65536
+model_context_window = $CONTEXT_WINDOW
 model_max_output_tokens = 8192
 EOF
 
@@ -99,3 +103,4 @@ echo "Registered provider in Codex config: $CONFIG_FILE"
 echo "Installed selectable Codex profile: $PROFILE_FILE"
 echo "Installed merged model catalog: $CATALOG_FILE"
 echo "base_url=$BASE_URL"
+echo "context_window=$CONTEXT_WINDOW"

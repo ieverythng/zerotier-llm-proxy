@@ -1,6 +1,7 @@
 param(
     [string]$CodexHome = "$env:USERPROFILE\.codex",
     [string]$BaseUrl = "http://10.88.140.94:4000/v1",
+    [int]$ContextWindow = 65536,
     [switch]$SetDefault
 )
 
@@ -52,7 +53,7 @@ if ($SetDefault) {
     $text = Get-Content -Raw -LiteralPath $ConfigPath
     $text = Set-Or-InsertTopLevel -Text $text -Key "model" -Value '"qwen36-turbo-hermes"'
     $text = Set-Or-InsertTopLevel -Text $text -Key "model_provider" -Value '"qwen36-zerotier"'
-    $text = Set-Or-InsertTopLevel -Text $text -Key "model_context_window" -Value "65536"
+    $text = Set-Or-InsertTopLevel -Text $text -Key "model_context_window" -Value $ContextWindow
     $text = Set-Or-InsertTopLevel -Text $text -Key "model_max_output_tokens" -Value "8192"
     Set-Content -LiteralPath $ConfigPath -Value $text -Encoding UTF8
     Write-Host "Updated default config: $ConfigPath"
@@ -68,6 +69,9 @@ wire_api = "responses"
 "@
 
 $configText = Get-Content -Raw -LiteralPath $ConfigPath
+if ($null -eq $configText) {
+    $configText = ""
+}
 $configText = [regex]::Replace($configText, "(?ms)\r?\n?\[model_providers\.qwen36-zerotier\].*?(?=\r?\n\[[^\]]+\]|\z)", "")
 Set-Content -LiteralPath $ConfigPath -Value ($configText.TrimEnd() + $providerBlock + "`r`n") -Encoding UTF8
 Write-Host "Registered provider in Codex config: $ConfigPath"
@@ -75,7 +79,7 @@ Write-Host "Registered provider in Codex config: $ConfigPath"
 $profileBlock = @"
 model = "qwen36-turbo-hermes"
 model_provider = "qwen36-zerotier"
-model_context_window = 65536
+model_context_window = $ContextWindow
 model_max_output_tokens = 8192
 "@
 

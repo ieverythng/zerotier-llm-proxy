@@ -2,3 +2,8 @@ model = "qwen36-turbo-hermes"
 model_provider = "qwen36-zerotier"
 model_context_window = 65536
 model_max_output_tokens = 8192
+
+# Special large-context server modes verified on this host:
+# - 98304: starts successfully, much slower under full-context prompts.
+# - 131072: stress mode, nearly fills RTX 5070 Ti VRAM.
+# Keep 65536 as the default unless the Windows server was started with a matching -ContextSize.

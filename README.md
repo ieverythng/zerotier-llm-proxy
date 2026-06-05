@@ -52,6 +52,12 @@ LLM_PROXY_BASE_URL=http://10.88.140.94:4000/v1 \
 ./scripts/unix/install-codex-client-config.sh
 ```
 
+When the Windows server is intentionally running a larger context mode, reinstall the client profile with a matching window:
+
+```bash
+LLM_CONTEXT_WINDOW=98304 ./scripts/unix/install-codex-client-config.sh
+```
+
 ## Client Verification Only
 
 From this Linux machine, the verification script checks the server from the outside:
@@ -124,6 +130,12 @@ To add the selectable profile to this Windows Codex install without changing the
 
 ```powershell
 .\scripts\windows\Install-CodexQwen36Config.ps1
+```
+
+For a deliberate large-context run, match the installed Codex profile to the server context:
+
+```powershell
+.\scripts\windows\Install-CodexQwen36Config.ps1 -ContextWindow 98304
 ```
 
 Restart Codex Desktop after installing the provider so the model/provider registry is reloaded.
