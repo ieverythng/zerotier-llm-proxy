@@ -13,6 +13,7 @@ The Windows/server agent owns:
 - Verifying local Windows endpoints:
   - `http://127.0.0.1:8080/v1/models`
   - `http://127.0.0.1:4000/v1/models`
+- Verifying context mode consistency with `scripts/windows/Test-Qwen36ContextMode.ps1`.
 
 Client-facing contract:
 
@@ -49,4 +50,5 @@ Recommended workflow:
 - Use `-ContextSize 131072` only for stress testing; it leaves roughly `100-200 MiB` VRAM free and can stall the shared endpoint.
 - Preserve cross-compaction knowledge in a small session ledger outside the model request. Keep the ledger to stable facts, current goals, known constraints, unresolved decisions, and file paths. Inject the ledger summary after compaction instead of depending on larger server context alone.
 - Use `docs/session-ledger.md` and `scripts/windows/Update-QwenSessionLedger.ps1` for a repo-local ledger workflow. The default ledger path is `_tmp/session-ledger.md`, which stays untracked.
+- Before handing a large-context mode to Codex, run `scripts/windows/Test-Qwen36ContextMode.ps1 -ExpectedContextWindow <ctx>` so server context and installed profile context do not silently diverge.
 

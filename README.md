@@ -78,6 +78,12 @@ The Windows host runs `llama.cpp` locally on `127.0.0.1:8080` and exposes LiteLL
 .\scripts\windows\Test-Qwen36Proxy.ps1
 ```
 
+Verify the live server context, LiteLLM model visibility, and installed Codex profile agree:
+
+```powershell
+.\scripts\windows\Test-Qwen36ContextMode.ps1 -ExpectedContextWindow 65536
+```
+
 To start the whole Windows stack from one command, including the existing `llama.cpp` turbo Hermes launcher when needed:
 
 ```powershell
