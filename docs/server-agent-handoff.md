@@ -40,7 +40,7 @@ Measured operating points on this host:
 - Use `scripts/windows/Invoke-QwenContextSweep.ps1` for repeatable context sweeps. It stops/restarts llama.cpp per context size, records VRAM snapshots, runs the LiteLLM benchmark, writes `_tmp/bench/context-sweep-*/summary.csv`, and restores `65536` by default.
 - Use `scripts/windows/Invoke-QwenKvCacheSweep.ps1` for fixed-context KV-cache and batch sweeps. It drives the existing local `llama-cpp-server` launch scripts without editing either llama.cpp checkout, writes `_tmp/bench/kv-sweep-*/summary.csv`, and restores the normal Hermes launcher by default.
 - Use `scripts/windows/Compare-QwenSweepResults.ps1` to normalize and rank all `_tmp/bench/**/summary.csv` rows by prompt size, completion tok/s, and VRAM headroom.
-- Preliminary 65k short-decode KV result on 2026-06-05: `q8_0/turbo2` produced `8.729` completion tok/s with about `1145 MiB` VRAM free before the request; `q8_0/turbo3` produced `5.191` completion tok/s with about `1070 MiB` free. Keep `turbo2` as the default until an 8k+ prompt sweep proves otherwise.
+- 65k KV result on 2026-06-05: short-decode prompt favored `q8_0/turbo2` over `q8_0/turbo3` (`8.729` vs `5.191` completion tok/s). An 8k synthetic prompt kept them effectively tied, with `q8_0/turbo2` slightly ahead (`3.983` vs `3.961` completion tok/s) and leaving more VRAM free (`1147 MiB` vs `1070 MiB`). Keep `q8_0/turbo2` as the default.
 
 Recommended workflow:
 
