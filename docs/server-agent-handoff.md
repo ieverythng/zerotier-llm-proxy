@@ -39,6 +39,7 @@ Measured operating points on this host:
 - `131072`: verified start. llama.cpp reported `n_ctx=131072`; `nvidia-smi` showed about `15840 MiB / 16303 MiB` used and sustained `100%` GPU during the interrupted full-context request.
 - Use `scripts/windows/Invoke-QwenContextSweep.ps1` for repeatable context sweeps. It stops/restarts llama.cpp per context size, records VRAM snapshots, runs the LiteLLM benchmark, writes `_tmp/bench/context-sweep-*/summary.csv`, and restores `65536` by default.
 - Use `scripts/windows/Invoke-QwenKvCacheSweep.ps1` for fixed-context KV-cache and batch sweeps. It drives the existing local `llama-cpp-server` launch scripts without editing either llama.cpp checkout, writes `_tmp/bench/kv-sweep-*/summary.csv`, and restores the normal Hermes launcher by default.
+- Use `scripts/windows/Compare-QwenSweepResults.ps1` to normalize and rank all `_tmp/bench/**/summary.csv` rows by prompt size, completion tok/s, and VRAM headroom.
 - Preliminary 65k short-decode KV result on 2026-06-05: `q8_0/turbo2` produced `8.729` completion tok/s with about `1145 MiB` VRAM free before the request; `q8_0/turbo3` produced `5.191` completion tok/s with about `1070 MiB` free. Keep `turbo2` as the default until an 8k+ prompt sweep proves otherwise.
 
 Recommended workflow:

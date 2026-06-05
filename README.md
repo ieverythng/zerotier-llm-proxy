@@ -102,6 +102,12 @@ Run a KV-cache and batch sweep at a fixed context size:
 .\scripts\windows\Invoke-QwenKvCacheSweep.ps1 -ContextSize 65536 -CacheTypeV turbo2,turbo3,turbo4,q8_0 -PromptContextTokens 0,8192
 ```
 
+Rank all collected sweep results:
+
+```powershell
+.\scripts\windows\Compare-QwenSweepResults.ps1
+```
+
 Measured on this RTX 5070 Ti host, `65536` is the practical default. `98304` and `131072` can start, but they heavily trade throughput and VRAM headroom for context:
 
 | llama ctx | Status | Notes |
