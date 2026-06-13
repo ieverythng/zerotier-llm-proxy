@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZeroTier LLM Proxy — Architecture</title>
+<style>
+  :root { --bg: #0d1117; --surface: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --green: #3fb950; --yellow: #d29922; --red: #f85149; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; padding: 2rem; max-width: 1100px; margin: 0 auto; }
+  h1 { color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem; font-size: 1.8rem; }
+  h2 { color: var(--green); margin: 2rem 0 1rem; font-size: 1.3rem; }
+  h3 { color: var(--text); margin: 1.5rem 0 0.5rem; font-size: 1.1rem; }
+  code { background: var(--surface); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.9em; }
+  pre { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; margin: 0.5rem 0 1rem; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { text-align: left; padding: 0.5rem 0.75rem; border: 1px solid var(--border); }
+  th { background: var(--surface); color: var(--accent); }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.8em; font-weight: 600; margin-right: 0.3rem; }
+  .badge-green { background: #23863620; color: var(--green); border: 1px solid #23863640; }
+  .badge-yellow { background: #d2992220; color: var(--yellow); border: 1px solid #d2992240; }
+  .badge-red { background: #f8514920; color: var(--red); border: 1px solid #f8514940; }
+  .badge-blue { background: #58a6ff20; color: var(--accent); border: 1px solid #58a6ff40; }
+  .diagram { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin: 1rem 0; font-family: 'Cascadia Code', 'Fira Code', monospace; white-space: pre; overflow-x: auto; font-size: 0.85rem; line-height: 1.4; }
+  .note { background: #58a6ff10; border-left: 3px solid var(--accent); padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+  .warning { background: #d2992210; border-left: 3px solid var(--yellow); padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+  .danger { background: #f8514910; border-left: 3px solid var(--red); padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+</style>
+</head>
+<body>
+
+<h1>ZeroTier LLM Proxy — Architecture</h1>
+<p>Serves local LLM inference over a ZeroTier overlay network via an OpenAI-compatible API, with optional GPT-5 Oracle access through webchat2api.</p>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>Architecture Diagram</h2>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────┐
+│                        WINDOWS HOST (GPU)                           │
+│                                                                     │
+│  ┌──────────────────┐    ┌──────────────────┐                       │
+│  │   llama.cpp      │    │   webchat2api    │                       │
+│  │   (CUDA inference)│    │   (GPT-5 Oracle) │                       │
+│  │   Port: 8080     │    │   Port: 9000     │                       │
+│  │   Model: Qwen3.6 │    │   Models: GPT-5  │                       │
+│  │   Context: 65K   │    │   Auth: Browser  │                       │
+│  └──────┬───────────┘    └────────┬─────────┘                       │
+│         │                         │                                  │
+│         ▼                         │                                  │
+│  ┌──────────────────┐            │                                  │
+│  │   LiteLLM Proxy  │            │                                  │
+│  │   Port: 4000     │            │                                  │
+│  │   OpenAI compat  │            │                                  │
+│  └──────┬───────────┘            │                                  │
+│         │                       │                                   │
+└─────────┼───────────────────────┼───────────────────────────────────┘
+          │                       │
+          ▼                       ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        WSL (Ubuntu)                                  │
+│                                                                     │
+│  ┌──────────────────┐    ┌──────────────────┐                       │
+│  │  Hermes Gateway  │    │  webchat2api     │                       │
+│  │  Port: 8001      │    │  (via WSL bridge) │                      │
+│  │  Routes to       │    │  Port: 9000       │                       │
+│  │  Windows:8080    │    └──────────────────┘                       │
+│  └──────────────────┘                                                │
+│                                                                     │
+│  Clients: WatsonOW, Codex CLI, scripts                              │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    ZeroTier Network (Overlay)                        │
+│                                                                     │
+│  Network: 3b19b3a716937e29 (my-first-network)                       │
+│                                                                     │
+│  Windows PC:  10.88.140.94   ← LiteLLM reachable on :4000          │
+│  WSL/Linux:   10.88.140.135  ← Clients connect from remote         │
+└─────────────────────────────────────────────────────────────────────┘</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>Component Map</h2>
+
+<table>
+<tr><th>Component</th><th>Host</th><th>Port</th><th>Role</th></tr>
+<tr><td>llama.cpp Server</td><td>Windows (GPU)</td><td><code>8080</code></td><td>Local model inference — Qwen3.6 TurboQuant Hermes 27B</td></tr>
+<tr><td>LiteLLM Proxy</td><td>Windows</td><td><code>4000</code></td><td>OpenAI-compatible API wrapper around llama.cpp</td></tr>
+<tr><td>webchat2api</td><td>WSL (Python)</td><td><code>9000</code></td><td>GPT-5 Oracle via ChatGPT Plus session proxy</td></tr>
+<tr><td>Hermes Gateway</td><td>WSL</td><td><code>8001</code></td><td>Routes to llama.cpp on Windows host for local inference</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>Use Cases</h2>
+
+<h3>1. Local LLM Inference (Primary)</h3>
+<p>Hermes Agent connects to the Qwen3.6 model running on Windows GPU via the Hermes Gateway → llama.cpp bridge. This is the default front model for all agent operations.</p>
+<pre>curl http://172.24.16.1:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"qwen36-turbo-hermes","messages":[{"role":"user","content":"Hello"}]}'</pre>
+
+<h3>2. ZeroTier Remote Access</h3>
+<p>Remote machines on the ZeroTier network can reach the LiteLLM proxy at <code>10.88.140.94:4000</code>, getting full OpenAI-compatible access to the local model without exposing ports publicly.</p>
+<pre>curl http://10.88.140.94:4000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer &lt;llama-api-key&gt;" \
+  -d '{"model":"qwen36-turbo-hermes","messages":[{"role":"user","content":"Hello"}]}'</pre>
+
+<h3>3. GPT-5 Oracle (Expert Consultation)</h3>
+<p>For complex reasoning tasks, the Hermes Agent can query GPT-5 models via webchat2api proxy. Used for architecture decisions, security assessments, and verification of technical claims.</p>
+<pre>bash /home/juanbeck/Watson/scripts/ask-gpt5.sh "Should we use FSDP or DeepSpeed for this training?" gpt-5-5-thinking</pre>
+
+<h3>4. Codex Delegation (Code Work)</h3>
+<p>Subagents spawned via <code>delegate_task</code> use OpenAI Codex CLI with OAuth authentication — full tool calling, terminal access, and function-calling capabilities.</p>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>Limitations</h2>
+
+<div class="warning">
+<strong>webchat2api (Oracle) Limitations:</strong>
+<ul style="margin-top:0.5rem; padding-left:1.5rem;">
+  <li><strong>No function calling</strong> — ChatGPT built-in tools (Browse, Code Interpreter, DALL-E) are UI-only features that cannot be triggered programmatically via webchat2api or any headless proxy.</li>
+  <li><strong>Token revocation</strong> — OpenAI periodically rotates/revokes access tokens. When this happens, you must extract a fresh <code>__Secure-access_token</code> from browser DevTools and update <code>data/accounts.json</code>.</li>
+  <li><strong>Rate limits</strong> — ~50 messages per 8-hour window for ChatGPT Plus. Resets approximately every 8 hours.</li>
+  <li><strong>Text-only</strong> — No image input/output, no file uploads through the proxy.</li>
+  <li><strong>ToS risk</strong> — Automated usage of ChatGPT Plus session violates OpenAI's Terms of Service. Use at your own risk.</li>
+</ul>
+</div>
+
+<div class="note">
+<strong>Codex Delegation (Recommended for tool use):</strong>
+<ul style="margin-top:0.5rem; padding-left:1.5rem;">
+  <li><strong>Full function calling</strong> — Codex CLI supports tool calls, terminal execution, and file operations.</li>
+  <li><strong>OAuth auth</strong> — Uses proper OAuth flow, no token revocation issues.</li>
+  <li><strong>Higher rate limits</strong> — Codex tier has more generous limits than Plus session proxy.</li>
+</ul>
+</div>
+
+<h3>Infrastructure Limitations</h3>
+<ul>
+  <li><strong>Single model per server</strong> — Only one GGUF model can be loaded in llama.cpp at a time. Swapping requires stopping and restarting the server.</li>
+  <li><strong>WSL cannot run Windows executables</strong> — llama.cpp must run on the Windows host; WSL is used for orchestration only.</li>
+  <li><strong>GPU memory</strong> — The Qwen3.6 27B Q3_K_M model uses significant VRAM. Running a second model instance in parallel is not feasible.</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>Model Swap Procedure</h2>
+
+<p>To swap the loaded model (e.g., from Qwen3.6 to Qwopus for benchmarking):</p>
+
+<pre># Stop current server
+powershell -File C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\stop_llama_server.ps1
+
+# Start with new model
+powershell -File C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\start_turbo_hermes.ps1 `
+  -Profile hermes-qwen36-64k `
+  -ModelPath "D:\MODELS\Qwopus-VL-3.6-27B-Q3_K_M\Qwopus3.6-27B-v2-Q3_K_M.gguf"</pre>
+
+<p>Or use the unified startup script with a custom model:</p>
+<pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-Qwen36ZeroTierStack.ps1 `
+  -Model qwopus-3.6-27b `
+  -ModelPath "D:\MODELS\Qwopus-VL-3.6-27B-Q3_K_M\Qwopus3.6-27B-v2-Q3_K_M.gguf"</pre>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>Startup Commands</h2>
+
+<h3>Full Stack (One Command)</h3>
+<pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-Qwen36ZeroTierStack.ps1</pre>
+
+<h3>Without Oracle</h3>
+<pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-Qwen36ZeroTierStack.ps1 -NoOracle</pre>
+
+<h3>Token Refresh (when Oracle fails)</h3>
+<pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Refresh-ChatGPTToken.ps1 -RestartProxy</pre>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>Network Topology</h2>
+
+<table>
+<tr><th>Interface</th><th>IP</th><th>Reachable From</th></tr>
+<tr><td>Windows llama.cpp</td><td><code>172.24.16.1:8080</code></td><td>WSL (via NAT bridge)</td></tr>
+<tr><td>LiteLLM Proxy</td><td><code>127.0.0.1:4000</code></td><td>Localhost only</td></tr>
+<tr><td>LiteLLM via ZeroTier</td><td><code>10.88.140.94:4000</code></td><td>ZeroTier network peers</td></tr>
+<tr><td>webchat2api</td><td><code>127.0.0.1:9000</code></td><td>WSL localhost</td></tr>
+<tr><td>Hermes Gateway</td><td><code>127.0.0.1:8001</code></td><td>WSL localhost</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>File Layout</h2>
+
+<pre>zerotier-llm-proxy/
+├── config/server/litellm-config.yaml    # LiteLLM backend config
+├── docs/architecture.html               # This file
+├── scripts/windows/
+│   ├── Start-Qwen36ZeroTierStack.ps1   # Unified startup (llama.cpp + LiteLLM + Oracle)
+│   ├── Start-Qwen36LiteLLM.ps1         # LiteLLM proxy launcher
+│   ├── Refresh-ChatGPTToken.ps1        # Auto token extraction & update
+│   └── ...                              # Benchmarking, testing scripts
+└── README.md
+
+llama-cpp-server/                        # Separate repo
+├── profiles/llama-profiles.json         # Model profiles
+├── scripts/
+│   ├── start_turbo_hermes.ps1          # llama.cpp launcher
+│   ├── start_profile.ps1               # Profile-based launcher
+│   └── stop_llama_server.ps1           # Server shutdown
+
+webchat2api/                             # WSL side
+├── src/data/accounts.json               # ChatGPT session tokens
+└── src/main.py                          # Proxy entry point</pre>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>Baseline Metrics</h2>
+
+<p>Qwen3.6 TurboQuant Hermes 27B (Q3_K_M) on RTX GPU:</p>
+
+<table>
+<tr><th>Context</th><th>Throughput</th><th>TTFT</th></tr>
+<tr><td>Short (500 tok input)</td><td>42.7 tok/s</td><td>0.93s</td></tr>
+<tr><td>Medium (2K ctx, 200 tok output)</td><td>25.9 tok/s</td><td>2.89s</td></tr>
+<tr><td>Long (8K ctx, 100 tok output)</td><td>8.9 tok/s</td><td>8.89s</td></tr>
+</table>
+
+<p style="margin-top:2rem; color: var(--muted); font-size: 0.85rem;">Last updated: June 13, 2026</p>
+
+</body>
+</html>

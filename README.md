@@ -1,161 +1,180 @@
 # ZeroTier LLM Proxy
 
-Role-aware setup repo for sharing one Windows-hosted `llama.cpp` model with Linux/macOS Codex clients over ZeroTier.
+Serve local LLM inference over a [ZeroTier](https://www.zerotier.com/) overlay network via an OpenAI-compatible API, with optional GPT-5 Oracle access.
 
-The implementation source of truth is [`zerotier-llm-bootstrap.html`](zerotier-llm-bootstrap.html). This repo turns that guide into copy-pasteable config and small verification scripts.
+## Architecture at a Glance
 
-## Roles
-
-- **Client agents, Linux/macOS:** use `config/codex.client.toml.example` and `scripts/unix/*`.
-- **Server agent, Windows:** own the LiteLLM and `llama.cpp` host setup. See [`docs/server-agent-handoff.md`](docs/server-agent-handoff.md); server scripts/config should live under `scripts/windows/` and `config/server/` when added.
-
-## Current Client Values
-
-- Windows ZeroTier host: `10.88.140.94`
-- LiteLLM proxy: `http://10.88.140.94:4000/v1`
-- Model name: `qwen36-turbo-hermes`
-- Client auth token: none; access is scoped by ZeroTier and Windows Firewall.
-- Codex registry: provider is added to `~/.codex/config.toml` as `[model_providers.qwen36-zerotier]`, without changing the global default.
-- Codex CLI selection: profile is installed as `~/.codex/qwen36-zerotier.config.toml`.
-- Codex model list: a merged catalog is installed at `~/.codex/model-catalogs/qwen36-plus-bundled.json`.
-
-## Codex `wire_api`
-
-Codex custom providers must use `wire_api = "responses"` (Codex 0.136 rejects
-`chat_completions`). LiteLLM on the Windows host translates `/v1/responses` to
-llama.cpp chat completions. Use `verify-client.sh` to exercise both HTTP paths;
-only `responses` is valid in `~/.codex/config.toml`.
-
-## Architecture
-
-Codex routes models to providers inside its compiled Rust binary. There is no per-model provider override in config or model catalogs. The only way to route a specific model through a custom provider is via the `--profile` flag. For the Codex Desktop app (which does not pass `--profile`), a shell wrapper at `~/.local/bin/codex` intercepts invocations with `-m qwen36-turbo-hermes` and auto-injects `-p qwen36-zerotier`.
-
-## Linux Client Quick Start
-
-```bash
-# Install provider, profile, and model catalog:
-./scripts/unix/install-codex-client-config.sh
-
-# Verify connectivity:
-./scripts/unix/verify-client.sh
-
-# CLI usage (requires --profile):
-codex exec --profile qwen36-zerotier "Say hello"
+```
+Windows Host (GPU)                    WSL (Orchestration)
+┌──────────────┐                      ┌──────────────┐
+│  llama.cpp   │:8080                 │  Hermes      │:8001
+│  (Qwen3.6)   │───┐                  │  Gateway     │
+└──────────────┘   │                  └──────────────┘
+                   ▼
+            ┌──────────────┐          ┌──────────────┐
+            │  LiteLLM     │:4000    │ webchat2api  │:9000
+            │  Proxy       │         │ (GPT-5)      │
+            └──────┬───────┘         └──────────────┘
+                   │
+                   ▼
+        ┌──────────────────────┐
+        │  ZeroTier Network    │
+        │  10.88.x.x:4000     │
+        └──────────────────────┘
 ```
 
-For the Codex Desktop app, install the shell wrapper so `qwen36-turbo-hermes` is selectable from the model dropdown. See [`docs/client-agent-runbook.md`](docs/client-agent-runbook.md) and the bootstrap HTML file for wrapper setup details.
+**Full architecture diagram:** [docs/architecture.html](docs/architecture.html)
 
-Override defaults when needed:
+## Quick Start
 
-```bash
-LLM_PROXY_BASE_URL=http://10.88.140.94:4000/v1 \
-./scripts/unix/install-codex-client-config.sh
-```
-
-When the Windows server is intentionally running a larger context mode, reinstall the client profile with a matching window:
-
-```bash
-LLM_CONTEXT_WINDOW=98304 ./scripts/unix/install-codex-client-config.sh
-```
-
-## Client Verification Only
-
-From this Linux machine, the verification script checks the server from the outside:
-
-- ZeroTier TCP reachability to `:4000`
-- `GET /v1/models`
-- `POST /v1/chat/completions`
-- `POST /v1/responses`
-
-It does not start LiteLLM, install server dependencies, open firewall rules, or touch `llama.cpp`.
-
-## Windows Server Quick Start
-
-The Windows host runs `llama.cpp` locally on `127.0.0.1:8080` and exposes LiteLLM on `0.0.0.0:4000`:
-
-```powershell
-.\scripts\windows\Start-Qwen36LiteLLM.ps1
-.\scripts\windows\Test-Qwen36Proxy.ps1
-```
-
-Verify the live server context, LiteLLM model visibility, and installed Codex profile agree:
-
-```powershell
-.\scripts\windows\Test-Qwen36ContextMode.ps1 -ExpectedContextWindow 65536
-```
-
-To start the whole Windows stack from one command, including the existing `llama.cpp` turbo Hermes launcher when needed:
+### Start Everything (One Command)
 
 ```powershell
 .\scripts\windows\Start-Qwen36ZeroTierStack.ps1
 ```
 
-The stack launcher forwards Hermes tuning knobs to `C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\start_turbo_hermes.ps1`:
+This launches:
+1. **llama.cpp** — Qwen3.6 TurboQuant Hermes on port 8080
+2. **LiteLLM Proxy** — OpenAI-compatible API on port 4000
+3. **webchat2api** — GPT-5 Oracle on port 9000 (via WSL)
+
+### Options
 
 ```powershell
-.\scripts\windows\Start-Qwen36ZeroTierStack.ps1 -Profile hermes-qwen36-64k -ContextSize 65536 -Metrics
+# Skip Oracle (llama.cpp + LiteLLM only)
+.\scripts\windows\Start-Qwen36ZeroTierStack.ps1 -NoOracle
+
+# Custom model
+.\scripts\windows\Start-Qwen36ZeroTierStack.ps1 `
+  -Model qwopus-3.6-27b `
+  -ModelPath "D:\MODELS\Qwopus-VL-3.6-27B-Q3_K_M\Qwopus3.6-27B-v2-Q3_K_M.gguf"
+
+# Skip llama.cpp startup (already running)
+.\scripts\windows\Start-Qwen36ZeroTierStack.ps1 -SkipLlamaStart
 ```
 
-Measure proxy throughput across short and long synthetic contexts:
+## Endpoints
 
-```powershell
-.\scripts\windows\Measure-Qwen36ProxyThroughput.ps1 -ContextTokens 0,8192,32768,65536
-```
+| Service | Local | ZeroTier |
+|---------|-------|----------|
+| llama.cpp | `http://127.0.0.1:8080/v1` | — |
+| LiteLLM Proxy | `http://127.0.0.1:4000/v1` | `http://10.88.140.94:4000/v1` |
+| webchat2api (Oracle) | `http://127.0.0.1:9000/v1` | — |
 
-Run a backend restart sweep that records throughput and VRAM, then restores the default 65k server:
+## GPT-5 Oracle (webchat2api)
 
-```powershell
-.\scripts\windows\Invoke-QwenContextSweep.ps1 -ServerContextSizes 65536,98304 -PromptContextTokens 0,8192,32768,65536
-```
+The Oracle provides access to GPT-5 models via a ChatGPT Plus session proxy.
 
-Run a KV-cache and batch sweep at a fixed context size:
+### Available Models
+- `gpt-5` — Standard GPT-5
+- `gpt-5-5` — GPT-5.5
+- `gpt-5-5-thinking` — GPT-5.5 with extended reasoning (default)
 
-```powershell
-.\scripts\windows\Invoke-QwenKvCacheSweep.ps1 -ContextSize 65536 -CacheTypeV turbo2,turbo3,turbo4,q8_0 -PromptContextTokens 0,8192
-```
-
-Rank all collected sweep results:
-
-```powershell
-.\scripts\windows\Compare-QwenSweepResults.ps1
-```
-
-Measured on this RTX 5070 Ti host, `65536` is the practical default. `98304` and `131072` can start, but they heavily trade throughput and VRAM headroom for context:
-
-| llama ctx | Status | Notes |
-|---:|---|---|
-| `65536` | Default | About 14.9 GiB VRAM used at idle, ~1.1 GiB free, usable Hermes latency. |
-| `98304` | Special large-context mode | Starts successfully; a ~98k synthetic context took about 152s for a short response. |
-| `131072` | Stress mode | Starts successfully and nearly fills VRAM; expect queueing or long stalls under full-context requests. |
-
-For Hermes/Discord sessions, keep a compact external session ledger in the repo or task workspace and paste only the current working set plus the ledger summary after compaction. Treat the huge context modes as recovery or audit tools, not as the normal endpoint setting.
-
-Use [`docs/session-ledger.md`](docs/session-ledger.md) and `scripts/windows/Update-QwenSessionLedger.ps1` to maintain that compact state outside the model request.
-
-To add the selectable profile to this Windows Codex install without changing the default model:
-
-```powershell
-.\scripts\windows\Install-CodexQwen36Config.ps1
-```
-
-For a deliberate large-context run, match the installed Codex profile to the server context:
-
-```powershell
-.\scripts\windows\Install-CodexQwen36Config.ps1 -ContextWindow 98304
-```
-
-Or switch the whole Windows mode in one command, including restart, Codex profile install, and verification:
-
-```powershell
-.\scripts\windows\Switch-Qwen36ContextMode.ps1 -ContextWindow 65536
-```
-
-Restart Codex Desktop after installing the provider so the model/provider registry is reloaded.
-
-## npm Update Warning
-
-Running `npm update -g @openai/codex` overwrites the shell wrapper at `~/.local/bin/codex`. Restore it with:
+### Usage from Hermes
 
 ```bash
-~/.codex/restore-codex-wrapper.sh
+# Via the ask-gpt5.sh script
+bash /home/juanbeck/Watson/scripts/ask-gpt5.sh "Your question" gpt-5-5-thinking
 ```
+
+### Token Refresh
+
+When OpenAI revokes your access token (you'll see `密钥无效或已失效`):
+
+```powershell
+.\scripts\windows\Refresh-ChatGPTToken.ps1 -RestartProxy
+```
+
+This script:
+1. Attempts to extract your `__Secure-access_token` from Chrome/Edge cookies
+2. Updates `webchat2api/data/accounts.json` with the new token
+3. Restarts the webchat2api proxy
+
+**Manual fallback:** If automatic extraction fails, the script will prompt you to paste the token from browser DevTools (Application → Cookies → `__Secure-access_token`).
+
+### Oracle Limitations
+
+- **Text-only** — No function calling, no tool use, no image input
+- **Rate limited** — ~50 messages per 8-hour window (ChatGPT Plus)
+- **Token rotation** — OpenAI periodically revokes access tokens; refresh required
+- **ToS risk** — Automated usage of ChatGPT Plus session may violate Terms of Service
+
+For tasks requiring tool calling, use **Codex delegation** instead (configured as the default delegation provider in Hermes).
+
+## Codex Delegation
+
+Hermes Agent uses OpenAI Codex CLI (OAuth) for delegated coding tasks:
+- Full function calling and tool use
+- Terminal execution capabilities
+- No token revocation issues
+
+Configured in `~/.hermes/config.yaml`:
+```yaml
+delegation:
+  model: codex
+  provider: openai-codex
+```
+
+## Model Swap
+
+To load a different model (e.g., for benchmarking):
+
+```powershell
+# Stop current server
+.\llama-cpp-server\scripts\stop_llama_server.ps1
+
+# Start with new model
+.\llama-cpp-server\scripts\start_turbo_hermes.ps1 `
+  -Profile hermes-qwen36-64k `
+  -ModelPath "D:\MODELS\path\to\model.gguf"
+```
+
+Or via the unified script:
+```powershell
+.\scripts\windows\Start-Qwen36ZeroTierStack.ps1 `
+  -Model your-model-name `
+  -ModelPath "D:\MODELS\path\to\model.gguf"
+```
+
+## Scripts Reference
+
+### Windows Scripts (`scripts/windows/`)
+
+| Script | Purpose |
+|--------|---------|
+| `Start-Qwen36ZeroTierStack.ps1` | Unified startup: llama.cpp + LiteLLM + Oracle |
+| `Start-Qwen36LiteLLM.ps1` | LiteLLM proxy only |
+| `Refresh-ChatGPTToken.ps1` | Extract browser token, update accounts.json |
+| `Switch-Qwen36ContextMode.ps1` | Switch between context size profiles |
+| `Test-Qwen36ContextMode.ps1` | Test current context configuration |
+| `Measure-Qwen36ProxyThroughput.ps1` | Benchmark throughput metrics |
+| `Invoke-QwenContextSweep.ps1` | Sweep test across context sizes |
+| `Compare-QwenSweepResults.ps1` | Compare benchmark results |
+
+## Project Structure
+
+```
+zerotier-llm-proxy/
+├── config/server/litellm-config.yaml    # LiteLLM backend config
+├── docs/architecture.html               # Full architecture documentation
+├── scripts/windows/                     # PowerShell scripts
+└── README.md                            # This file
+```
+
+## Requirements
+
+- **Windows host** with NVIDIA GPU (CUDA)
+- **WSL 2** with Ubuntu
+- **Python 3.11+** in WSL (for webchat2api)
+- **PowerShell 5+** on Windows
+- **ZeroTier** installed and connected to network `3b19b3a716937e29`
+
+## Baseline Performance
+
+Qwen3.6 TurboQuant Hermes 27B (Q3_K_M):
+
+| Context | Throughput | TTFT |
+|---------|-----------|------|
+| Short (500 tok) | 42.7 tok/s | 0.93s |
+| Medium (2K ctx) | 25.9 tok/s | 2.89s |
+| Long (8K ctx) | 8.9 tok/s | 8.89s |
