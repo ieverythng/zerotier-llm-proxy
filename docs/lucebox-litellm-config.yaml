@@ -1,0 +1,37 @@
+# LiteLLM Proxy Config — Lucebox dflash_server over ZeroTier
+#
+# Place at: ~/.hermes/litellm/config.yaml
+#
+# Architecture:
+#   Hermes → LiteLLM proxy (WSL :4000) → ZeroTier → Lucebox server (Windows :18080)
+#
+# Start proxy:
+#   litellm --config ~/.hermes/litellm/config.yaml --port 4000
+
+# ─── Model Definitions ────────────────────────────────────
+model_list:
+  # Lucebox model — routed to dflash_server over ZeroTier
+  - model_name: lucebox-qwen
+    litellm_proxy_modelType: openai/dynamic_serving
+    api_base: "http://10.88.140.94:18080"
+    api_key: "not-needed"
+    # Optional: add fallback to llama.cpp if Lucebox is down
+    # fallbacks:
+    #   - model_name: llamacpp-qwen
+
+# ─── LiteLLM Global Settings ──────────────────────────────
+litellm_settings:
+  # Pass through all optional params (temperature, top_p, etc.)
+  pass_through_optional_params: True
+  # Override auth — Lucebox doesn't require API keys
+  override_auth: True
+  # Enable streaming if Lucebox supports SSE
+  # stream_timeout: 300
+
+# ─── Optional: Keep llama.cpp as fallback model ───────────
+# Uncomment below to keep both engines available:
+#
+# - model_name: llamacpp-qwen
+#   litellm_proxy_modelType: openai/dynamic_serving
+#   api_base: "http://172.24.16.1:8080"
+#   api_key: "not-needed"

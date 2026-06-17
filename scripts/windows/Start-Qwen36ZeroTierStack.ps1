@@ -30,9 +30,9 @@ $ErrorActionPreference = "Stop"
 
 # ─── Color helpers ──────────────────────────────────────────────
 function Write-Step { param([string]$Msg); Write-Host ("`n[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $Msg) -ForegroundColor Cyan }
-function Write-Ok   { param([string]$Msg); Write-Host ("  ✓ {0}" -f $Msg) -ForegroundColor Green }
-function Write-Warn { param([string]$Msg); Write-Host ("  ⚠ {0}" -f $Msg) -ForegroundColor Yellow }
-function Write-Fail { param([string]$Msg); Write-Host ("  ✗ {0}" -f $Msg) -ForegroundColor Red }
+function Write-Ok   { param([string]$Msg); Write-Host ("  [OK] {0}" -f $Msg) -ForegroundColor Green }
+function Write-Warn { param([string]$Msg); Write-Host ("  [WARN] {0}" -f $Msg) -ForegroundColor Yellow }
+function Write-Fail { param([string]$Msg); Write-Host ("  [FAIL] {0}" -f $Msg) -ForegroundColor Red }
 
 # ─── Health check helper ────────────────────────────────────────
 function Test-JsonEndpoint {
@@ -49,9 +49,9 @@ function Test-PortListening {
 
 # ─── Phase 0: Banner ────────────────────────────────────────────
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
-Write-Host "║     ZeroTier LLM Proxy Stack — Startup Script          ║" -ForegroundColor Magenta
-Write-Host "╚══════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
+Write-Host "============================================================" -ForegroundColor Magenta
+Write-Host "       ZeroTier LLM Proxy Stack - Startup Script" -ForegroundColor Magenta
+Write-Host "============================================================" -ForegroundColor Magenta
 Write-Host ""
 
 # ─── Phase 1: llama.cpp ─────────────────────────────────────────
@@ -128,7 +128,7 @@ if (Test-PortListening -Port $LiteLLMPort) {
     if ($proxyModels) {
         Write-Ok "LiteLLM already running at $litellmBaseUrl"
     } else {
-        Write-Warn "Port $LiteLLMPort occupied but not serving LiteLLM — you may need to kill the process."
+        Write-Warn "Port $LiteLLMPort occupied but not serving LiteLLM - you may need to kill the process."
     }
 } else {
     $proxyScript = Join-Path $PSScriptRoot "Start-Qwen36LiteLLM.ps1"
@@ -180,7 +180,7 @@ if (-not $NoOracle) {
         if ($oracleHealth) {
             Write-Ok "webchat2api ready on port $Webchat2ApiPort"
         } else {
-            Write-Warn "webchat2api may still be starting — check WSL logs if Oracle calls fail"
+            Write-Warn "webchat2api may still be starting - check WSL logs if Oracle calls fail"
             Write-Host "  Tip: Run 'wsl -e -c `\"tail -f /home/juanbeck/webchat2api/src/data/logs/*.log`\"' to monitor" -ForegroundColor DarkGray
         }
     }
@@ -190,7 +190,7 @@ if (-not $NoOracle) {
 
 # ─── Summary ─────────────────────────────────────────────────────
 Write-Host ""
-Write-Host "════════════════════════════════════════════════════" -ForegroundColor Magenta
+Write-Host "====================================================" -ForegroundColor Magenta
 Write-Host "  Stack Status Summary:" -ForegroundColor Green
 Write-Host ""
 
@@ -198,11 +198,11 @@ $llamaUp = (Test-PortListening -Port $LlamaPort)
 $litellmUp = (Test-PortListening -Port $LiteLLMPort)
 $oracleUp = (-not $NoOracle) -and (Test-PortListening -Port $Webchat2ApiPort)
 
-Write-Host "  llama.cpp    : $(if($llamaUp){'✓ Running'}else{'✗ Not running'}) on port $LlamaPort" `
+Write-Host "  llama.cpp    : $(if($llamaUp){'[OK] Running'}else{'[FAIL] Not running'}) on port $LlamaPort" `
     -ForegroundColor $(if($llamaUp){'Green'}else{'Red'})
-Write-Host "  LiteLLM      : $(if($litellmUp){'✓ Running'}else{'✗ Not running'}) on port $LiteLLMPort" `
+Write-Host "  LiteLLM      : $(if($litellmUp){'[OK] Running'}else{'[FAIL] Not running'}) on port $LiteLLMPort" `
     -ForegroundColor $(if($litellmUp){'Green'}else{'Red'})
-Write-Host "  webchat2api  : $(if($oracleUp){'✓ Running'}else{'○ Skipped'}) on port $Webchat2ApiPort" `
+Write-Host "  webchat2api  : $(if($oracleUp){'[OK] Running'}else{'[SKIP] Skipped'}) on port $Webchat2ApiPort" `
     -ForegroundColor $(if($oracleUp){'Green'}else{'Yellow'})
 
 Write-Host ""
@@ -222,7 +222,9 @@ if (-not $NoOracle) {
 }
 
 Write-Host ""
-Write-Host "════════════════════════════════════════════════════" -ForegroundColor Magenta
+Write-Host "====================================================" -ForegroundColor Magenta
 Write-Host ""
-Write-Host "Press any key to exit this summary (services keep running in background)..."
-$null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+if ($host.Name -eq "ConsoleHost" -and -not [Console]::IsInputRedirected) {
+    Write-Host "Press any key to exit this summary (services keep running in background)..."
+    $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}
