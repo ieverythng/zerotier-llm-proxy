@@ -25,6 +25,7 @@ if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyCon
 
 New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
 $worker = @'
+Set-Location "__REPO_ROOT__"
 $env:HEADROOM_TELEMETRY = "off"
 $env:OPENAI_TARGET_API_URL = "__UPSTREAM__"
 $env:HEADROOM_EXCLUDE_TOOLS = "read_file,headroom_retrieve"
@@ -34,6 +35,7 @@ $env:HEADROOM_FORCE_KOMPRESS = "__FORCE_KOMPRESS__"
 & "__HEADROOM_EXE__" proxy --host 0.0.0.0 --port __PORT__ --mode token --intercept-tool-results --no-subscription-tracking --no-telemetry --memory *> "__LOG_FILE__"
 '@
 $worker = $worker.Replace("__UPSTREAM__", $LiteLLMUpstream).
+    Replace("__REPO_ROOT__", $repoRoot).
     Replace("__MIN_TOKENS__", $MinTokens).
     Replace("__PROTECT_RECENT__", $ProtectRecent).
     Replace("__FORCE_KOMPRESS__", $(if ($ForceKompress) { "1" } else { "0" })).
@@ -47,7 +49,7 @@ Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @(
 
 for ($attempt = 1; $attempt -le 30; $attempt++) {
     try {
-        $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2
+        $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/readyz" -TimeoutSec 2
         Write-Host "Headroom ready: http://127.0.0.1:$Port/v1 -> $LiteLLMUpstream" -ForegroundColor Green
         exit 0
     } catch {

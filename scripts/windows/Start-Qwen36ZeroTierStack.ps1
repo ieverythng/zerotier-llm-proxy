@@ -253,7 +253,7 @@ Write-Host ""
 
 $llamaUp = $null -ne (Test-JsonEndpoint -Uri "$llamaBaseUrl/models")
 $litellmUp = $null -ne (Test-JsonEndpoint -Uri "$litellmBaseUrl/models")
-$headroomUp = $EnableHeadroom -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$HeadroomPort/health"))
+$headroomUp = $EnableHeadroom -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$HeadroomPort/readyz"))
 $oracleUp = $oracleEnabled -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$Webchat2ApiPort/v1/models"))
 
 Write-Host "  llama.cpp    : $(if($llamaUp){'[OK] Running'}else{'[FAIL] Not running'}) on port $LlamaPort" `

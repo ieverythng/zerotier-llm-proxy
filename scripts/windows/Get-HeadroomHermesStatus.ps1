@@ -4,6 +4,7 @@ param([int]$Port = 8787)
 $ErrorActionPreference = "Stop"
 $baseUrl = "http://127.0.0.1:$Port"
 try {
+    $ready = Invoke-RestMethod -Uri "$baseUrl/readyz" -TimeoutSec 5
     $health = Invoke-RestMethod -Uri "$baseUrl/health" -TimeoutSec 5
 } catch {
     throw "Headroom health endpoint is unavailable on port $Port."
@@ -15,9 +16,14 @@ if (-not $memory.enabled -or -not $memory.ready) {
     throw "Headroom memory backend is not ready."
 }
 
-$models = Invoke-RestMethod -Uri "$baseUrl/v1/models" -TimeoutSec 10
-if (-not $models.data -or $models.data.Count -eq 0) {
-    throw "Headroom cannot reach the LiteLLM OpenAI-compatible upstream."
+$upstreamUrl = [string]$health.config.openai_api_url
+if ($upstreamUrl -ne "http://127.0.0.1:4000/v1") {
+    throw "Headroom upstream is not the expected LiteLLM endpoint: $upstreamUrl"
+}
+try {
+    $upstreamHealth = Invoke-RestMethod -Uri "http://127.0.0.1:4000/health" -TimeoutSec 5
+} catch {
+    throw "LiteLLM upstream health endpoint is unavailable."
 }
 
 try {
@@ -34,6 +40,7 @@ try {
     Port = $Port
     ProcessId = if ($listener) { $listener.OwningProcess } else { $null }
     Memory = $memory
-    Models = @($models.data | ForEach-Object { $_.id })
-    Health = $health.status
+    LiteLLM = $upstreamHealth
+    ProxyReady = $ready
+    AggregateStatus = $health.status
 } | Format-List
