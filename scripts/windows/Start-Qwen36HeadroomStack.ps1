@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [switch]$NoOracle,
+    [switch]$EnableOracle,
     [switch]$SkipLlamaStart,
     [switch]$RouteHermesThroughHeadroom,
     [int]$HeadroomPort = 8787,
@@ -14,7 +14,7 @@ $stack = Join-Path $scriptDir "Start-Qwen36ZeroTierStack.ps1"
 $params = @{
     EnableHeadroom = $true
 }
-if ($NoOracle) { $params.NoOracle = $true }
+if ($EnableOracle) { $params.EnableOracle = $true }
 if ($SkipLlamaStart) { $params.SkipLlamaStart = $true }
 if ($RouteHermesThroughHeadroom) { $params.RouteHermesThroughHeadroom = $true }
 if ($HeadroomPort -ne 8787) { $params.HeadroomPort = $HeadroomPort }

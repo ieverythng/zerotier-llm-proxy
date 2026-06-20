@@ -12,7 +12,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $runtimeRoot = Join-Path $repoRoot ".runtime\headroom"
 $headroomExe = Join-Path $runtimeRoot ".venv\Scripts\headroom.exe"
 $logFile = Join-Path $runtimeRoot "headroom.log"
-$hostFile = Join-Path $runtimeRoot "headroom.host.cmd"
+$workerFile = Join-Path $runtimeRoot "headroom.worker.ps1"
 
 if (-not (Test-Path -LiteralPath $headroomExe)) {
     throw "Headroom is not installed. Run .\scripts\windows\Install-HeadroomHermes.ps1 first."
@@ -24,18 +24,26 @@ if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyCon
 }
 
 New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
-$command = @"
-@echo off
-set HEADROOM_TELEMETRY=off
-set OPENAI_TARGET_API_URL=$LiteLLMUpstream
-set HEADROOM_EXCLUDE_TOOLS=read_file,headroom_retrieve
-set HEADROOM_MIN_TOKENS=$MinTokens
-set HEADROOM_PROTECT_RECENT=$ProtectRecent
-set HEADROOM_FORCE_KOMPRESS=$(if ($ForceKompress) { "1" } else { "0" })
-"$headroomExe" proxy --host 0.0.0.0 --port $Port --mode token --intercept-tool-results --no-subscription-tracking --no-telemetry --memory > "$logFile" 2>&1
-"@
-Set-Content -LiteralPath $hostFile -Value $command -Encoding ASCII
-Start-Process cmd.exe -ArgumentList @("/d", "/c", $hostFile) -WindowStyle Hidden | Out-Null
+$worker = @'
+$env:HEADROOM_TELEMETRY = "off"
+$env:OPENAI_TARGET_API_URL = "__UPSTREAM__"
+$env:HEADROOM_EXCLUDE_TOOLS = "read_file,headroom_retrieve"
+$env:HEADROOM_MIN_TOKENS = "__MIN_TOKENS__"
+$env:HEADROOM_PROTECT_RECENT = "__PROTECT_RECENT__"
+$env:HEADROOM_FORCE_KOMPRESS = "__FORCE_KOMPRESS__"
+& "__HEADROOM_EXE__" proxy --host 0.0.0.0 --port __PORT__ --mode token --intercept-tool-results --no-subscription-tracking --no-telemetry --memory *> "__LOG_FILE__"
+'@
+$worker = $worker.Replace("__UPSTREAM__", $LiteLLMUpstream).
+    Replace("__MIN_TOKENS__", $MinTokens).
+    Replace("__PROTECT_RECENT__", $ProtectRecent).
+    Replace("__FORCE_KOMPRESS__", $(if ($ForceKompress) { "1" } else { "0" })).
+    Replace("__HEADROOM_EXE__", $headroomExe).
+    Replace("__PORT__", $Port).
+    Replace("__LOG_FILE__", $logFile)
+Set-Content -LiteralPath $workerFile -Value $worker -Encoding ASCII
+Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @(
+    "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $workerFile
+) | Out-Null
 
 for ($attempt = 1; $attempt -le 30; $attempt++) {
     try {

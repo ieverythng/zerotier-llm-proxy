@@ -1,12 +1,12 @@
 # Start-Qwen36ZeroTierStack.ps1
 # =============================================
 # Unified startup script for the ZeroTier LLM Proxy stack.
-# Launches: llama.cpp → LiteLLM proxy → webchat2api (Oracle)
+# Launches: llama.cpp → LiteLLM proxy. webchat2api is opt-in.
 #
 # Usage:
 #   .\Start-Qwen36ZeroTierStack.ps1
 #   .\Start-Qwen36ZeroTierStack.ps1 -Model qwopus-3.6-27b -SkipLlamaStart
-#   .\Start-Qwen36ZeroTierStack.ps1 -NoOracle
+#   .\Start-Qwen36ZeroTierStack.ps1 -EnableOracle
 # =============================================
 
 param(
@@ -26,12 +26,14 @@ param(
     [switch]$RouteHermesThroughHeadroom,
     [int]$HeadroomPort = 8787,
     [switch]$ForceHeadroomCompression,
+    [switch]$EnableOracle,
     [switch]$NoOracle,
     [string]$Webchat2ApiPath = "/home/juanbeck/webchat2api",
     [int]$Webchat2ApiPort = 9000
 )
 
 $ErrorActionPreference = "Stop"
+$oracleEnabled = $EnableOracle -and -not $NoOracle
 
 # ─── Color helpers ──────────────────────────────────────────────
 function Write-Step { param([string]$Msg); Write-Host ("`n[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $Msg) -ForegroundColor Cyan }
@@ -73,6 +75,16 @@ if (-not $SkipLlamaStart) {
         throw "Cannot proceed without llama.cpp startup script."
     }
 
+    $existingModels = Test-JsonEndpoint -Uri "$llamaBaseUrl/models"
+    $existingNames = @()
+    if ($existingModels.data) { $existingNames += @($existingModels.data | ForEach-Object { $_.id }) }
+    if ($existingModels.models) { $existingNames += @($existingModels.models | ForEach-Object { $_.id; $_.name; $_.model }) }
+    if ($existingModels -and $existingNames -contains $Model) {
+        Write-Ok "llama.cpp already healthy at $llamaBaseUrl (model: $Model)"
+        $SkipLlamaStart = $true
+    }
+
+    if (-not $SkipLlamaStart) {
     $llamaArgs = @(
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
@@ -109,6 +121,7 @@ if (-not $SkipLlamaStart) {
     }
 
     Write-Ok "llama.cpp ready at $llamaBaseUrl (model: $Model)"
+    }
 } else {
     Write-Step "Phase 1: Skipping llama.cpp startup (user provided)"
 
@@ -198,7 +211,7 @@ if ($EnableHeadroom) {
     }
 }
 
-if (-not $NoOracle) {
+if ($oracleEnabled) {
     Write-Step "Phase 3: Starting webchat2api (GPT-5 Oracle)"
 
     if (Test-PortListening -Port $Webchat2ApiPort) {
@@ -224,11 +237,12 @@ if (-not $NoOracle) {
             Write-Ok "webchat2api ready on port $Webchat2ApiPort"
         } else {
             Write-Warn "webchat2api may still be starting - check WSL logs if Oracle calls fail"
-            Write-Host "  Tip: Run 'wsl -e -c `\"tail -f /home/juanbeck/webchat2api/src/data/logs/*.log`\"' to monitor" -ForegroundColor DarkGray
+            $oracleLogHint = "tail -f /home/juanbeck/webchat2api/src/data/logs/*.log"
+            Write-Host ("  Tip: Run wsl.exe -d Ubuntu -- bash -lc {0} to monitor" -f $oracleLogHint) -ForegroundColor DarkGray
         }
     }
 } else {
-    Write-Step "Phase 3: Skipping webchat2api (NoOracle flag set)"
+    Write-Step "Phase 3: Skipping webchat2api (use -EnableOracle to start it)"
 }
 
 # ─── Summary ─────────────────────────────────────────────────────
@@ -237,10 +251,10 @@ Write-Host "====================================================" -ForegroundCol
 Write-Host "  Stack Status Summary:" -ForegroundColor Green
 Write-Host ""
 
-$llamaUp = (Test-PortListening -Port $LlamaPort)
-$litellmUp = (Test-PortListening -Port $LiteLLMPort)
-$headroomUp = $EnableHeadroom -and (Test-PortListening -Port $HeadroomPort)
-$oracleUp = (-not $NoOracle) -and (Test-PortListening -Port $Webchat2ApiPort)
+$llamaUp = $null -ne (Test-JsonEndpoint -Uri "$llamaBaseUrl/models")
+$litellmUp = $null -ne (Test-JsonEndpoint -Uri "$litellmBaseUrl/models")
+$headroomUp = $EnableHeadroom -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$HeadroomPort/health"))
+$oracleUp = $oracleEnabled -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$Webchat2ApiPort/v1/models"))
 
 Write-Host "  llama.cpp    : $(if($llamaUp){'[OK] Running'}else{'[FAIL] Not running'}) on port $LlamaPort" `
     -ForegroundColor $(if($llamaUp){'Green'}else{'Red'})
@@ -268,7 +282,7 @@ Write-Host "    Proxy:  http://127.0.0.1:$LiteLLMPort/v1   (LiteLLM OpenAI-compa
 if ($EnableHeadroom) {
     Write-Host "    Headroom: http://127.0.0.1:$HeadroomPort/v1  (context optimization + memory)" -ForegroundColor DarkGray
 }
-if (-not $NoOracle) {
+if ($oracleEnabled) {
     Write-Host "    Oracle: http://127.0.0.1:$Webchat2ApiPort/v1  (webchat2api GPT-5)" -ForegroundColor DarkGray
 }
 

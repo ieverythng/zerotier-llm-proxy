@@ -82,7 +82,7 @@ This launches:
 
 ```powershell
 # Skip Oracle (llama.cpp + LiteLLM only)
-.\scripts\windows\Start-Qwen36ZeroTierStack.ps1 -NoOracle
+.\scripts\windows\Start-Qwen36ZeroTierStack.ps1
 
 # Custom model
 .\scripts\windows\Start-Qwen36ZeroTierStack.ps1 `
