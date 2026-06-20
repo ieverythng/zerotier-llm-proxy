@@ -2,3 +2,5 @@
 .codex-test/
 .codex-app-qwen-test/
 _tmp/
+/.runtime/headroom/.venv
+/.runtime/

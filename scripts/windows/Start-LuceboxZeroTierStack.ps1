@@ -4,18 +4,32 @@ param(
     [string]$ModelPath = "D:\MODELS\Qwen3.6-27B-Q3_K_M.gguf",
     [string]$DraftPath = "C:\Users\Admin\PROJECTS\lucebox-models\draft\dflash-draft-3.6-q4_k_m.gguf",
     [int]$LlamaPort = 8080,
-    [int]$ContextSize = 131072,
-    [int]$Budget = 16,
+    [int]$ContextSize = 65536,
+    [int]$Budget = 22,
+    [int]$FaWindow = 0,
     [string]$CacheTypeK = "tq3_0",
     [string]$CacheTypeV = "tq3_0",
-    [int]$KvFlash = 4096,
+    [string]$KvFlash = "4096",
+    [ValidateSet("off", "auto", "always")]
+    [string]$PrefillCompression = "off",
+    [int]$PrefillThreshold = 4096,
+    [double]$PrefillKeepRatio = 0.10,
+    [string]$PrefillDrafter = "C:\Users\Admin\PROJECTS\lucebox-hub\server\models\Qwen3-0.6B-BF16.gguf",
+    [bool]$PrefillUseBsa = $true,
+    [double]$PrefillAlpha = 0.85,
+    [switch]$PrefillSkipPark,
+    [ValidateSet("auto", "persistent", "request-scoped")]
+    [string]$DraftResidency = "request-scoped",
+    [string]$DflashProxyHost = "0.0.0.0",
     [int]$DflashProxyPort = 18080,
+    [int]$DflashProxyMaxOutputTokens = 1024,
     [int]$LiteLLMPort = 4000,
     [string]$Webchat2ApiPath = "/home/juanbeck/webchat2api",
     [int]$Webchat2ApiPort = 9000,
     [switch]$NoOracle,
     [switch]$SkipDflashStart,
-    [switch]$NoSpecDecode
+    [switch]$NoSpecDecode,
+    [switch]$AllowExperimentalLowVram
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,6 +50,45 @@ function Write-Step { param([string]$Message) Write-Host "`n[$(Get-Date -Format 
 function Write-Ok { param([string]$Message) Write-Host "  [OK] $Message" -ForegroundColor Green }
 function Write-Warn { param([string]$Message) Write-Host "  [WARN] $Message" -ForegroundColor Yellow }
 function Write-Fail { param([string]$Message) Write-Host "  [FAIL] $Message" -ForegroundColor Red }
+
+function Get-GpuVramMiB {
+    try {
+        $value = & nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>$null |
+            Select-Object -First 1
+        if ($value -match '^\s*(\d+)') { return [int]$Matches[1] }
+    } catch { }
+    return $null
+}
+
+function Test-DflashCompatibility {
+    param([string]$TargetPath, [string]$SpecDraftPath)
+
+    $targetName = [IO.Path]::GetFileName($TargetPath)
+    $draftName = [IO.Path]::GetFileName($SpecDraftPath)
+
+    if ($targetName -match 'DFlash-(IQ|Q[0-9])') {
+        throw "'$targetName' is a DFlash draft artifact, not a target model. Pass it with -DraftPath, not -ModelPath."
+    }
+    if ($targetName -match 'MTP-pi-tune') {
+        throw "'$targetName' is incompatible with this DFlash build: its 65 blocks are not divisible by the required full_attention_interval=4."
+    }
+    if ($draftName -notmatch 'DFlash|draft') {
+        Write-Warn "Draft '$draftName' is not named as a DFlash draft. Decode acceptance may be poor."
+    }
+
+    $vramMiB = Get-GpuVramMiB
+    if ($PrefillSkipPark -and $vramMiB -and $vramMiB -lt 32768) {
+        throw "-PrefillSkipPark is a >=32GB option. Detected $vramMiB MiB VRAM; remove it so PFlash can park weights."
+    }
+    if ($vramMiB -and $vramMiB -lt 22528) {
+        $message = "Detected $vramMiB MiB VRAM. Lucebox documents >=22GB for the Qwen3.6 target plus DFlash draft; this machine is an unsupported experimental configuration."
+        if (-not $AllowExperimentalLowVram) {
+            throw "$message Re-run with -AllowExperimentalLowVram only for an explicitly experimental test."
+        }
+        Write-Warn $message
+        Write-Warn "PFlash is disabled by the 16GB wrappers because its scorer and target cannot coexist reliably on this card."
+    }
+}
 
 function Test-JsonEndpoint {
     param([string]$Uri)
@@ -124,6 +177,14 @@ $RepoRoot = (Resolve-Path (Join-Path $ScriptDir "..\..")).Path
 $LogDir = Join-Path $RepoRoot "_tmp\lucebox-stack"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
+$env:PYTHONIOENCODING = "utf-8"
+if (-not $env:LLAMA_CPP_API_KEY) {
+    $env:LLAMA_CPP_API_KEY = "local-qwen36"
+}
+if (-not $env:OPENAI_API_KEY) {
+    $env:OPENAI_API_KEY = $env:LLAMA_CPP_API_KEY
+}
+
 $LuceboxRepo = (Resolve-Path $LuceboxRepo).Path
 if (-not $DflashServerBin) {
     $DflashServerBin = Join-Path $LuceboxRepo "server\build\dflash_server.exe"
@@ -134,6 +195,10 @@ $dflashProxyBaseUrl = "http://127.0.0.1:$DflashProxyPort/v1"
 $litellmBaseUrl = "http://127.0.0.1:$LiteLLMPort/v1"
 
 Repair-ProcessPathEnvironment
+
+if (-not $SkipDflashStart) {
+    Test-DflashCompatibility -TargetPath $ModelPath -SpecDraftPath $DraftPath
+}
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Magenta
@@ -160,12 +225,34 @@ if (-not $SkipDflashStart) {
         "--model-name", "qwen36-turbo-hermes-spec"
     )
 
-    if ($KvFlash -gt 0) {
+    if ($FaWindow -gt 0) {
+        $args += @("--fa-window", "$FaWindow")
+    }
+
+    if ($KvFlash -and $KvFlash -ne "0" -and $KvFlash -ne "off") {
         $args += @("--kvflash", "$KvFlash")
     }
 
+    if ($PrefillCompression -ne "off") {
+        $env:DFLASH_FP_USE_BSA = if ($PrefillUseBsa) { "1" } else { "0" }
+        $env:DFLASH_FP_ALPHA = "$PrefillAlpha"
+        $args += @(
+            "--prefill-compression", $PrefillCompression,
+            "--prefill-threshold", "$PrefillThreshold",
+            "--prefill-keep-ratio", "$PrefillKeepRatio"
+        )
+        if (Test-Path -LiteralPath $PrefillDrafter) {
+            $args += @("--prefill-drafter", $PrefillDrafter)
+        } else {
+            throw "Missing PFlash prefill drafter: $PrefillDrafter"
+        }
+        if ($PrefillSkipPark) {
+            $args += "--prefill-skip-park"
+        }
+    }
+
     if (-not $NoSpecDecode) {
-        $args += @("--ddtree", "--ddtree-budget", "$Budget")
+        $args += @("--ddtree", "--ddtree-budget", "$Budget", "--draft-residency", $DraftResidency)
         if (Test-Path -LiteralPath $DraftPath) {
             $args += @("--draft", $DraftPath)
         } else {
@@ -207,7 +294,7 @@ if (Test-PortListening -Port $DflashProxyPort) {
     Start-HostedService `
         -Name "dflash-proxy" `
         -FilePath "python" `
-        -ArgumentList @($proxyScript, "--host", "127.0.0.1", "--port", "$DflashProxyPort", "--upstream", "http://127.0.0.1:$LlamaPort") `
+        -ArgumentList @($proxyScript, "--host", $DflashProxyHost, "--port", "$DflashProxyPort", "--upstream", "http://127.0.0.1:$LlamaPort", "--max-output-tokens", "$DflashProxyMaxOutputTokens") `
         -WorkingDirectory $ScriptDir | Out-Null
     Start-Sleep -Seconds 2
 }

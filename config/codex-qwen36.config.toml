@@ -1,4 +1,4 @@
 [model_providers.qwen36-zerotier]
-name = "qwen36 via Windows ZeroTier LiteLLM"
-base_url = "http://10.88.140.94:4000/v1"
+name = "qwen36 Lucebox via Windows ZeroTier"
+base_url = "http://10.88.140.94:18080/v1"
 wire_api = "responses"

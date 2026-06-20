@@ -1,6 +1,6 @@
 param(
     [string]$CodexHome = "$env:USERPROFILE\.codex",
-    [string]$BaseUrl = "http://10.88.140.94:4000/v1",
+    [string]$BaseUrl = "http://10.88.140.94:18080/v1",
     [int]$ContextWindow = 65536,
     [switch]$SetDefault
 )
@@ -63,7 +63,7 @@ if ($SetDefault) {
 $providerBlock = @"
 
 [model_providers.qwen36-zerotier]
-name = "qwen36 via Windows ZeroTier LiteLLM"
+name = "qwen36 Lucebox via Windows ZeroTier"
 base_url = "$BaseUrl"
 wire_api = "responses"
 "@
@@ -77,7 +77,7 @@ Set-Content -LiteralPath $ConfigPath -Value ($configText.TrimEnd() + $providerBl
 Write-Host "Registered provider in Codex config: $ConfigPath"
 
 $profileBlock = @"
-model = "qwen36-turbo-hermes"
+model = "qwen36-turbo-hermes-spec"
 model_provider = "qwen36-zerotier"
 model_context_window = $ContextWindow
 model_max_output_tokens = 8192

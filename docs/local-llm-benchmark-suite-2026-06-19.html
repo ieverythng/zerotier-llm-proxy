@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local LLM Benchmark Suite - 2026-06-19</title>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.5; color: #1c232b; margin: 32px auto; max-width: 1040px; padding: 0 20px; }
+    h1, h2 { color: #102a43; } code { background: #eef2f7; padding: 2px 4px; }
+    .decision { border-left: 4px solid #087f5b; background: #e6fcf5; padding: 14px 16px; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0 28px; } th, td { border: 1px solid #cbd5e1; padding: 9px; text-align: left; } th { background: #eaf0f6; }
+    .best { font-weight: 700; color: #087f5b; } .warn { color: #9c3d00; }
+  </style>
+</head>
+<body>
+  <h1>Local LLM Benchmark Suite</h1>
+  <p>2026-06-19 | RTX 5070 Ti 16GB | Ryzen 7 5800X</p>
+  <p class="decision"><strong>Selected backend:</strong> llama.cpp TurboQuant with Qwen3.6 MTP pi-tune Q3 at 65k context. Hermes remains available at <code>http://10.88.140.94:4000/v1</code> using <code>qwen36-turbo-hermes</code>.</p>
+  <h2>Measured Performance</h2>
+  <table>
+    <tr><th>Backend / model</th><th>Prompt tok/s</th><th>Decode tok/s</th><th>Long end-to-end</th><th>Result</th></tr>
+    <tr><td>llama.cpp Qwen3.6 Q3</td><td>1,449.33</td><td>39.58</td><td>12.612s</td><td>Valid baseline</td></tr>
+    <tr><td>llama.cpp MTP Q3, draft-mtp</td><td>1,173.14</td><td class="best">54.12</td><td>15.466s</td><td>Selected for Hermes</td></tr>
+    <tr><td>DFlash Q3, 128k PFlash warm</td><td>n/a</td><td>18.53</td><td>55.583s</td><td class="warn">Unsupported memory configuration</td></tr>
+    <tr><td>DFlash Q3 + IQ4 draft, 65k</td><td>n/a</td><td>3.53</td><td>11.6s for 36 tokens</td><td class="warn">Poor 11.5% acceptance</td></tr>
+  </table>
+  <h2>Why DFlash Was Not Selected</h2>
+  <p>Lucebox documents a 22GB minimum and a 24GB reference card for its Qwen3.6 target plus draft setup; this GPU has 16,303 MiB. Its PFlash <code>skip-park</code> mode is for 32GB+ cards. The prior 128k launch was therefore memory-contended. The MTP model is also rejected by DFlash because its 65 layers violate the backend's full-attention interval requirement.</p>
+  <h2>Compatibility</h2>
+  <ul>
+    <li>The IQ4 artifact is a DFlash draft, not a target model. It is valid only with <code>--draft</code>.</li>
+    <li>The MTP Q3 model is valid in llama.cpp with the dedicated <code>draft-mtp</code> profile.</li>
+    <li>LFM2 can load alongside MTP, but only 207 MiB VRAM and 305 MiB RAM remained. It was stopped before traffic.</li>
+  </ul>
+  <h2>Safety Controls</h2>
+  <p>The Lucebox launch scripts now block draft-as-target errors, the known MTP incompatibility, <code>skip-park</code> below 32GB, and standard DFlash launch below 22GB unless explicitly marked experimental.</p>
+  <p>Lucebox disk footprint: 3.82 GiB across 9,377 files.</p>
+</body>
+</html>

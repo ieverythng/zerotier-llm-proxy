@@ -25,6 +25,46 @@ Windows Host (GPU)                    WSL (Orchestration)
 
 **Full architecture diagram:** [docs/architecture.html](docs/architecture.html)
 
+## Lucebox/DFlash Pilot
+
+Lucebox/DFlash preserves the ZeroTier/LiteLLM access pattern, but is not the
+recommended production backend on the installed 16GB GPU. Its documented
+Qwen3.6 target-plus-draft setup requires at least 22GB VRAM. The launchers
+therefore block unsafe defaults unless an explicit experimental override is
+used.
+
+```powershell
+# Experimental low-VRAM profile, 65k context
+.\scripts\windows\Start-Lucebox65kStack.ps1
+
+# Experimental maximum-context profile (requires explicit low-VRAM override)
+.\scripts\windows\Start-Lucebox128kStack.ps1
+
+# Stop Lucebox/DFlash, compatibility proxy, and LiteLLM
+.\scripts\windows\Stop-LuceboxStack.ps1
+```
+
+Current endpoints when running:
+
+| Service | ZeroTier |
+|---------|----------|
+| DFlash compatibility proxy | `http://10.88.140.94:18080/v1` |
+| LiteLLM / Hermes | `http://10.88.140.94:4000/v1` |
+
+Current measured recommendation: use llama.cpp TurboQuant with the Qwen3.6
+MTP pi-tune model for normal Hermes/Codex work. The stable model name remains
+`qwen36-turbo-hermes`; LiteLLM selects the active backend. See the
+[benchmark suite](docs/local-llm-benchmark-suite-2026-06-19.md) for measured
+prefill, decode, compatibility, and memory findings.
+
+## Context Management POC
+
+[Headroom](docs/headroom-hermes-poc.md) is staged as an optional local proxy
+between Hermes and LiteLLM. It targets tool-output and history growth; it is not
+enabled by default and does not replace the model backend.
+See the [HTML operational guide](docs/headroom-hermes-integration.html) for the
+runtime architecture, scripts, cutover, and rollback procedure.
+
 ## Quick Start
 
 ### Start Everything (One Command)
@@ -143,6 +183,11 @@ Or via the unified script:
 | Script | Purpose |
 |--------|---------|
 | `Start-Qwen36ZeroTierStack.ps1` | Unified startup: llama.cpp + LiteLLM + Oracle |
+| `Start-Lucebox65kStack.ps1` | Lucebox/DFlash + proxy + LiteLLM, recommended 65k context profile |
+| `Start-Lucebox128kStack.ps1` | Lucebox/DFlash + proxy + LiteLLM, experimental 128k context profile |
+| `Start-LuceboxZeroTierStack.ps1` | Parameterized Lucebox/DFlash stack launcher |
+| `Stop-LuceboxStack.ps1` | Stop Lucebox/DFlash, compatibility proxy, and LiteLLM |
+| `Benchmark-LocalLlmEndpoint.ps1` | Benchmark OpenAI-compatible local LLM endpoints |
 | `Start-Qwen36LiteLLM.ps1` | LiteLLM proxy only |
 | `Refresh-ChatGPTToken.ps1` | Extract browser token, update accounts.json |
 | `Switch-Qwen36ContextMode.ps1` | Switch between context size profiles |
