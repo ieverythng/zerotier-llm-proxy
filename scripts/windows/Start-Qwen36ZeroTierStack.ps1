@@ -21,6 +21,11 @@ param(
     [string]$BackendKey = "llama.cpp",
     [switch]$Metrics,
     [switch]$SkipLlamaStart,
+    [switch]$ReplaceLiteLLM,
+    [switch]$EnableHeadroom,
+    [switch]$RouteHermesThroughHeadroom,
+    [int]$HeadroomPort = 8787,
+    [switch]$ForceHeadroomCompression,
     [switch]$NoOracle,
     [string]$Webchat2ApiPath = "/home/juanbeck/webchat2api",
     [int]$Webchat2ApiPort = 9000
@@ -89,7 +94,10 @@ if (-not $SkipLlamaStart) {
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Seconds 2
         $models = Test-JsonEndpoint -Uri "$llamaBaseUrl/models"
-        if ($models -and ($models.data | ForEach-Object { $_.id }) -contains $Model) {
+        $modelNames = @()
+        if ($models.data) { $modelNames += @($models.data | ForEach-Object { $_.id }) }
+        if ($models.models) { $modelNames += @($models.models | ForEach-Object { $_.id; $_.name; $_.model }) }
+        if ($models -and $modelNames -contains $Model) {
             $ready = $true
             break
         }
@@ -110,7 +118,10 @@ if (-not $SkipLlamaStart) {
         throw "llama.cpp is not responding at $llamaBaseUrl. Start it first or remove -SkipLlamaStart."
     }
 
-    $hasModel = $models.data | ForEach-Object { $_.id } | Where-Object { $_ -eq $Model }
+    $modelNames = @()
+    if ($models.data) { $modelNames += @($models.data | ForEach-Object { $_.id }) }
+    if ($models.models) { $modelNames += @($models.models | ForEach-Object { $_.id; $_.name; $_.model }) }
+    $hasModel = $modelNames | Where-Object { $_ -eq $Model }
     if (-not $hasModel) {
         Write-Warn "Model '$Model' not found in llama.cpp. Available: $($models.data.id -join ', ')"
     } else {
@@ -121,16 +132,27 @@ if (-not $SkipLlamaStart) {
 # ─── Phase 2: LiteLLM Proxy ─────────────────────────────────────
 $litellmBaseUrl = "http://127.0.0.1:$LiteLLMPort/v1"
 
+if ($RouteHermesThroughHeadroom -and -not $EnableHeadroom) {
+    throw "-RouteHermesThroughHeadroom requires -EnableHeadroom."
+}
+
 Write-Step "Phase 2: Starting LiteLLM proxy"
 
 if (Test-PortListening -Port $LiteLLMPort) {
-    $proxyModels = Test-JsonEndpoint -Uri "$litellmBaseUrl/models"
+    if ($ReplaceLiteLLM) {
+        Get-NetTCPConnection -State Listen -LocalPort $LiteLLMPort -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique |
+            ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+        Start-Sleep -Seconds 1
+    }
+    $proxyModels = if (-not $ReplaceLiteLLM) { Test-JsonEndpoint -Uri "$litellmBaseUrl/models" } else { $null }
     if ($proxyModels) {
         Write-Ok "LiteLLM already running at $litellmBaseUrl"
     } else {
         Write-Warn "Port $LiteLLMPort occupied but not serving LiteLLM - you may need to kill the process."
     }
-} else {
+}
+if (-not (Test-PortListening -Port $LiteLLMPort)) {
     $proxyScript = Join-Path $PSScriptRoot "Start-Qwen36LiteLLM.ps1"
 
     if (-not (Test-Path -LiteralPath $proxyScript)) {
@@ -138,11 +160,13 @@ if (Test-PortListening -Port $LiteLLMPort) {
     }
 
     Write-Host "  Running LiteLLM on port $LiteLLMPort..." -ForegroundColor DarkGray
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $proxyScript `
-        -LlamaCppBaseUrl $llamaBaseUrl `
-        -ListenHost "0.0.0.0" `
-        -ListenPort $LiteLLMPort `
-        -BackendKey $BackendKey
+    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @(
+        "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $proxyScript,
+        "-LlamaCppBaseUrl", $llamaBaseUrl,
+        "-ListenHost", "0.0.0.0",
+        "-ListenPort", $LiteLLMPort,
+        "-BackendKey", "local-qwen36"
+    ) | Out-Null
 
     # Wait for LiteLLM
     Start-Sleep -Seconds 5
@@ -155,6 +179,25 @@ if (Test-PortListening -Port $LiteLLMPort) {
 }
 
 # ─── Phase 3: webchat2api (Oracle) ──────────────────────────────
+
+if ($EnableHeadroom) {
+    Write-Step "Phase 2b: Starting Headroom context proxy"
+    $headroomScript = Join-Path $PSScriptRoot "Start-HeadroomHermes.ps1"
+    if ($ForceHeadroomCompression) {
+        & $headroomScript -Port $HeadroomPort -ProtectRecent 0 -ForceKompress
+    } else {
+        & $headroomScript -Port $HeadroomPort
+    }
+
+    if ($RouteHermesThroughHeadroom) {
+        $routeScript = Join-Path $PSScriptRoot "Set-HermesHeadroomRoute.ps1"
+        & $routeScript -Enable -Port $HeadroomPort
+        Write-Ok "Hermes now routes through Headroom on port $HeadroomPort"
+    } else {
+        Write-Ok "Headroom is running but Hermes routing remains unchanged"
+    }
+}
+
 if (-not $NoOracle) {
     Write-Step "Phase 3: Starting webchat2api (GPT-5 Oracle)"
 

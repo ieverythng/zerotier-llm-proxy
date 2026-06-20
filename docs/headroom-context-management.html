@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Headroom Context Management</title>
+  <style>
+    :root { color: #18212b; background: #f4f7f8; font-family: Arial, sans-serif; }
+    body { margin: 0; line-height: 1.55; }
+    main { max-width: 1060px; margin: 0 auto; padding: 36px 22px 70px; }
+    header { border-bottom: 4px solid #157a6e; padding-bottom: 20px; }
+    h1, h2 { color: #102a43; }
+    h1 { margin: 0; font-size: 32px; }
+    .tag { display: inline-block; padding: 4px 8px; background: #d9f4ef; color: #075c52; font-weight: 700; font-size: 13px; }
+    .callout { margin: 18px 0; padding: 14px 16px; border-left: 4px solid #157a6e; background: #e8f7f3; }
+    .warn { border-left-color: #a55b00; background: #fff4df; }
+    pre { overflow-x: auto; padding: 16px; background: #15202b; color: #e8f1f7; border-radius: 4px; }
+    code { padding: 2px 4px; background: #e9eef3; font-family: Consolas, monospace; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; background: white; }
+    th, td { padding: 10px; border: 1px solid #ccd6e0; text-align: left; }
+    th { background: #eaf0f5; }
+    .metric { font-weight: 700; color: #075c52; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">Live Hermes Trial</span>
+    <h1>Headroom Context Management</h1>
+    <p>How the Windows Headroom proxy reduces long Hermes tool history before it reaches LiteLLM and llama.cpp.</p>
+  </header>
+  <section>
+    <h2>Active Request Path</h2>
+    <pre>Discord / Hermes in WSL
+  -> Windows host bridge
+  -> Headroom proxy :8787
+  -> LiteLLM :4000
+  -> llama.cpp :8080
+  -> local GPU</pre>
+    <p>Hermes keeps the same model name and OpenAI chat-completions transport. The only provider change is the proxy URL. Remote ZeroTier clients continue to use LiteLLM on port 4000.</p>
+  </section>
+  <section>
+    <h2>What Headroom Manages</h2>
+    <table>
+      <tr><th>Layer</th><th>Behavior</th><th>Why it matters here</th></tr>
+      <tr><td>Tool-result interceptor</td><td>Examines terminal, file, search, and session outputs before the following model call.</td><td>Large agent outputs are the source of the previous 54k-plus prompt stalls.</td></tr>
+      <tr><td>Content router</td><td>Classifies structured data, prose, code, and repeated content, then selects a compression strategy.</td><td>Only eligible stale content is rewritten; current user instructions remain verbatim.</td></tr>
+      <tr><td>CCR retrieval store</td><td>Stores originals locally and emits retrieval markers when content is compressed.</td><td>Hermes can call <code>headroom_retrieve</code> instead of re-running a command.</td></tr>
+      <tr><td>Compression cache</td><td>Reuses prior transformations for unchanged content.</td><td>After the first pass, observed compression overhead was roughly 39-130 ms.</td></tr>
+      <tr><td>Prefix preservation</td><td>Leaves stable instructions and recent context intact.</td><td>Preserves llama.cpp KV-cache behavior and protects current task state.</td></tr>
+    </table>
+  </section>
+  <section>
+    <h2>Observed Live Results</h2>
+    <div class="callout">The Discord task completed six tool turns. Headroom removed <span class="metric">56,709 input tokens</span> across six compressed requests.</div>
+    <table>
+      <tr><th>Request</th><th>Before</th><th>Upstream after Headroom</th><th>Saved</th><th>Compression</th><th>Proxy work</th></tr>
+      <tr><td>First tool-history pass</td><td>26,691</td><td>24,433</td><td>2,258</td><td>8.5%</td><td>5.36 s cold transform</td></tr>
+      <tr><td>Repeated history</td><td>28,622</td><td>24,723</td><td>3,899</td><td>13.6%</td><td>40 ms cache hit</td></tr>
+      <tr><td>Long session-search history</td><td>60,566</td><td>39,189</td><td>21,377</td><td>35.3%</td><td>130 ms cache hit</td></tr>
+      <tr><td>Final response pass</td><td>75,154</td><td>53,777</td><td>21,377</td><td>28.4%</td><td>125 ms cache hit</td></tr>
+    </table>
+    <p>The final model request still took 31.1 seconds because 53.8k tokens is substantial, but it avoided sending 21.4k additional tokens to llama.cpp. Hermes reported successful terminal, search, file-read, and session-search tool calls during the turn.</p>
+  </section>
+  <section>
+    <h2>Operational Controls</h2>
+    <pre># Full stack with Headroom
+.\scripts\windows\Start-Qwen36HeadroomStack.ps1
+
+# Inspect accumulated live savings
+Invoke-RestMethod http://127.0.0.1:8787/stats
+
+# Immediate rollback to the original LiteLLM route
+.\scripts\windows\Set-HermesHeadroomRoute.ps1 -Disable</pre>
+    <div class="callout warn">Do not treat proxy savings as model decode speed. Headroom reduces prefill/context work; llama.cpp decode tok/s remains the model-server metric.</div>
+  </section>
+</main>
+</body>
+</html>
