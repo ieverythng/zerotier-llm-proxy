@@ -32,7 +32,7 @@ set HEADROOM_EXCLUDE_TOOLS=read_file,headroom_retrieve
 set HEADROOM_MIN_TOKENS=$MinTokens
 set HEADROOM_PROTECT_RECENT=$ProtectRecent
 set HEADROOM_FORCE_KOMPRESS=$(if ($ForceKompress) { "1" } else { "0" })
-"$headroomExe" proxy --host 0.0.0.0 --port $Port --mode token --intercept-tool-results --no-subscription-tracking --no-telemetry > "$logFile" 2>&1
+"$headroomExe" proxy --host 0.0.0.0 --port $Port --mode token --intercept-tool-results --no-subscription-tracking --no-telemetry --memory > "$logFile" 2>&1
 "@
 Set-Content -LiteralPath $hostFile -Value $command -Encoding ASCII
 Start-Process cmd.exe -ArgumentList @("/d", "/c", $hostFile) -WindowStyle Hidden | Out-Null

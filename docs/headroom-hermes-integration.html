@@ -56,7 +56,13 @@
       <tr><td><code>Stop-HeadroomHermes.ps1</code></td><td>Stops the Windows Headroom proxy.</td></tr>
       <tr><td><code>Set-HermesHeadroomRoute.ps1</code></td><td>Explicitly switches Hermes between Headroom and direct LiteLLM, making a timestamped config backup.</td></tr>
       <tr><td><code>Start-Qwen36HeadroomStack.ps1</code></td><td>Starts llama.cpp, LiteLLM, and Headroom; optional route cutover.</td></tr>
+      <tr><td><code>Start-Qwen36ZeroTierStack.ps1</code></td><td>Full stack: llama.cpp → LiteLLM → Headroom + ZeroTier. Use this for the complete local inference pipeline.</td></tr>
     </table>
+  </section>
+
+  <section>
+    <h2>WSL Note</h2>
+    <p>Headroom runs on Windows, not in WSL. Hermes (in WSL) reaches it via the Windows host bridge at <code>172.24.16.1:8787</code>. Do not install or run a separate headroom proxy inside WSL — it's redundant and causes port conflicts.</p>
   </section>
 
   <section>
@@ -106,9 +112,26 @@
   </section>
 
   <section>
-    <h2>Current Trial</h2>
+    <h2>Current Status (Updated 2026-06-20)</h2>
     <p>The Windows proxy is installed with tool-result interception, Hermes routes through it, and the <code>headroom_retrieve</code> plugin is enabled. A real Hermes request reached the proxy with 20,181 input tokens. It did not invoke a tool, so there was no tool result to compress and Headroom correctly recorded zero savings.</p>
-    <p>Use a real multi-tool Discord task to complete the evaluation. Inspect <code>http://127.0.0.1:8787/stats</code> after the task and compare prompt tokens, first-token latency, decode speed, and tool correctness. The route script retains a timestamped backup for immediate rollback.</p>
+    <p><strong>Memory backend:</strong> Now enabled via <code>--memory</code> flag in <code>Start-HeadroomHermes.ps1</code>. This gives persistent memory across sessions via SQLite + embeddings. Memory is workspace-scoped (shared across all agents hitting the same project), NOT session-scoped. Use <code>--memory-storage=project</code> (default) for per-workspace isolation, or <code>--memory-storage=user</code> / <code>--memory-storage=global</code> for broader sharing.</p>
+    <div class="callout">Use a real multi-tool Discord task to complete the evaluation. Inspect <code>http://127.0.0.1:8787/stats</code> after the task and compare prompt tokens, first-token latency, decode speed, and tool correctness. The route script retains a timestamped backup for immediate rollback.</div>
+  </section>
+
+  <section>
+    <h2>Testing Status</h2>
+    <table>
+      <tr><th>Feature</th><th>Status</th><th>Notes</th></tr>
+      <tr><td>Proxy startup</td><td>✅ Verified</td><td>Health check passes, forwards to LiteLLM correctly</td></tr>
+      <tr><td>Hermes routing</td><td>✅ Verified</td><td><code>Set-HermesHeadroomRoute.ps1</code> toggles config successfully</td></tr>
+      <tr><td>Tool result compression</td><td>⚠️ Partial</td><td>Proxy receives tool results but first real multi-tool task not yet evaluated</td></tr>
+      <tr><td>CCR retrieval (headroom_retrieve)</td><td>⚠️ Partial</td><td>Plugin installed, Hermes can call it — needs real compressed content to test</td></tr>
+      <tr><td>Memory backend (--memory)</td><td>✅ Startup verified</td><td>Proxy starts with --memory flag; persistent memory injection not yet tested in live session</td></tr>
+      <tr><td>Code-aware compression</td><td>❌ Not configured</td><td>Requires <code>headroom-ai[code]</code> extra — not installed</td></tr>
+      <tr><td>Kompress ML compression</td><td>⚠️ Unknown</td><td>PyTorch not found in Windows venv — Kompress may fall back to structural only</td></tr>
+      <tr><td>ZeroTier remote access</td><td>✅ Verified</td><td>Remote clients reach LiteLLM on :4000; Headroom is local-only</td></tr>
+    </table>
+    <div class="warning">Do not cut over production Discord traffic until a fresh thread passes tool-call fidelity tests. Compression must reduce prompt tokens without making the agent re-run commands or lose required file content.</div>
   </section>
 
   <section>

@@ -54,6 +54,12 @@
 │  │   OpenAI compat  │            │                                  │
 │  └──────┬───────────┘            │                                  │
 │         │                       │                                   │
+│         ▼ (optional)            │                                   │
+│  ┌──────────────────┐            │                                  │
+│  │   Headroom Proxy │            │                                  │
+│  │   Port: 8787     │            │                                  │
+│  │   Context opt.   │            │                                  │
+│  └──────┬───────────┘            │                                  │
 └─────────┼───────────────────────┼───────────────────────────────────┘
           │                       │
           ▼                       ▼
@@ -64,7 +70,8 @@
 │  │  Hermes Gateway  │    │  webchat2api     │                       │
 │  │  Port: 8001      │    │  (via WSL bridge) │                      │
 │  │  Routes to       │    │  Port: 9000       │                       │
-│  │  Windows:8080    │    └──────────────────┘                       │
+│  │  Win:8787 or     │    └──────────────────┘                       │
+│  │  Win:4000        │                                                │
 │  └──────────────────┘                                                │
 │                                                                     │
 │  Clients: WatsonOW, Codex CLI, scripts                              │
@@ -87,8 +94,9 @@
 <tr><th>Component</th><th>Host</th><th>Port</th><th>Role</th></tr>
 <tr><td>llama.cpp Server</td><td>Windows (GPU)</td><td><code>8080</code></td><td>Local model inference — Qwen3.6 TurboQuant Hermes 27B</td></tr>
 <tr><td>LiteLLM Proxy</td><td>Windows</td><td><code>4000</code></td><td>OpenAI-compatible API wrapper around llama.cpp</td></tr>
+<tr><td>Headroom Proxy</td><td>Windows</td><td><code>8787</code></td><td>Context optimization layer (compression + memory). Optional — sits between Hermes and LiteLLM.</td></tr>
 <tr><td>webchat2api</td><td>WSL (Python)</td><td><code>9000</code></td><td>GPT-5 Oracle via ChatGPT Plus session proxy</td></tr>
-<tr><td>Hermes Gateway</td><td>WSL</td><td><code>8001</code></td><td>Routes to llama.cpp on Windows host for local inference</td></tr>
+<tr><td>Hermes Gateway</td><td>WSL</td><td><code>8001</code></td><td>Routes to Windows:8787 (Headroom) or Windows:4000 (LiteLLM direct)</td></tr>
 </table>
 
 <!-- ═══════════════════════════════════════════════════════════ -->

@@ -239,12 +239,17 @@ Write-Host ""
 
 $llamaUp = (Test-PortListening -Port $LlamaPort)
 $litellmUp = (Test-PortListening -Port $LiteLLMPort)
+$headroomUp = $EnableHeadroom -and (Test-PortListening -Port $HeadroomPort)
 $oracleUp = (-not $NoOracle) -and (Test-PortListening -Port $Webchat2ApiPort)
 
 Write-Host "  llama.cpp    : $(if($llamaUp){'[OK] Running'}else{'[FAIL] Not running'}) on port $LlamaPort" `
     -ForegroundColor $(if($llamaUp){'Green'}else{'Red'})
 Write-Host "  LiteLLM      : $(if($litellmUp){'[OK] Running'}else{'[FAIL] Not running'}) on port $LiteLLMPort" `
     -ForegroundColor $(if($litellmUp){'Green'}else{'Red'})
+if ($EnableHeadroom) {
+    Write-Host "  Headroom     : $(if($headroomUp){'[OK] Running (memory enabled)'}else{'[FAIL] Not running'}) on port $HeadroomPort" `
+        -ForegroundColor $(if($headroomUp){'Green'}else{'Red'})
+}
 Write-Host "  webchat2api  : $(if($oracleUp){'[OK] Running'}else{'[SKIP] Skipped'}) on port $Webchat2ApiPort" `
     -ForegroundColor $(if($oracleUp){'Green'}else{'Yellow'})
 
@@ -260,6 +265,9 @@ Write-Host ""
 Write-Host "  Endpoints:" -ForegroundColor DarkGray
 Write-Host "    Local:  http://127.0.0.1:$LlamaPort/v1   (llama.cpp direct)" -ForegroundColor DarkGray
 Write-Host "    Proxy:  http://127.0.0.1:$LiteLLMPort/v1   (LiteLLM OpenAI-compatible)" -ForegroundColor DarkGray
+if ($EnableHeadroom) {
+    Write-Host "    Headroom: http://127.0.0.1:$HeadroomPort/v1  (context optimization + memory)" -ForegroundColor DarkGray
+}
 if (-not $NoOracle) {
     Write-Host "    Oracle: http://127.0.0.1:$Webchat2ApiPort/v1  (webchat2api GPT-5)" -ForegroundColor DarkGray
 }
