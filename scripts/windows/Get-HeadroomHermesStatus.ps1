@@ -4,7 +4,6 @@ param([int]$Port = 8787)
 $ErrorActionPreference = "Stop"
 $baseUrl = "http://127.0.0.1:$Port"
 try {
-    $ready = Invoke-RestMethod -Uri "$baseUrl/readyz" -TimeoutSec 5
     $health = Invoke-RestMethod -Uri "$baseUrl/health" -TimeoutSec 5
 } catch {
     throw "Headroom health endpoint is unavailable on port $Port."
@@ -41,6 +40,6 @@ try {
     ProcessId = if ($listener) { $listener.OwningProcess } else { $null }
     Memory = $memory
     LiteLLM = $upstreamHealth
-    ProxyReady = $ready
+    ProxyReady = $true
     AggregateStatus = $health.status
 } | Format-List

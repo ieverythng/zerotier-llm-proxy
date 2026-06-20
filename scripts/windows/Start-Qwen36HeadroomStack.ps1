@@ -11,9 +11,7 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $stack = Join-Path $scriptDir "Start-Qwen36ZeroTierStack.ps1"
 
-$params = @{
-    EnableHeadroom = $true
-}
+$params = @{}
 if ($EnableOracle) { $params.EnableOracle = $true }
 if ($SkipLlamaStart) { $params.SkipLlamaStart = $true }
 if ($RouteHermesThroughHeadroom) { $params.RouteHermesThroughHeadroom = $true }

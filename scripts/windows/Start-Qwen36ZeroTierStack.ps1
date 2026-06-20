@@ -22,7 +22,7 @@ param(
     [switch]$Metrics,
     [switch]$SkipLlamaStart,
     [switch]$ReplaceLiteLLM,
-    [switch]$EnableHeadroom,
+    [switch]$NoHeadroom,
     [switch]$RouteHermesThroughHeadroom,
     [int]$HeadroomPort = 8787,
     [switch]$ForceHeadroomCompression,
@@ -34,6 +34,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $oracleEnabled = $EnableOracle -and -not $NoOracle
+$headroomEnabled = -not $NoHeadroom
 
 # ─── Color helpers ──────────────────────────────────────────────
 function Write-Step { param([string]$Msg); Write-Host ("`n[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $Msg) -ForegroundColor Cyan }
@@ -145,8 +146,8 @@ if (-not $SkipLlamaStart) {
 # ─── Phase 2: LiteLLM Proxy ─────────────────────────────────────
 $litellmBaseUrl = "http://127.0.0.1:$LiteLLMPort/v1"
 
-if ($RouteHermesThroughHeadroom -and -not $EnableHeadroom) {
-    throw "-RouteHermesThroughHeadroom requires -EnableHeadroom."
+if ($RouteHermesThroughHeadroom -and -not $headroomEnabled) {
+    throw "-RouteHermesThroughHeadroom requires Headroom. Remove -NoHeadroom."
 }
 
 Write-Step "Phase 2: Starting LiteLLM proxy"
@@ -181,19 +182,24 @@ if (-not (Test-PortListening -Port $LiteLLMPort)) {
         "-BackendKey", "local-qwen36"
     ) | Out-Null
 
-    # Wait for LiteLLM
-    Start-Sleep -Seconds 5
-    $proxyReady = Test-JsonEndpoint -Uri "$litellmBaseUrl/models"
-    if ($proxyReady) {
-        Write-Ok "LiteLLM ready at $litellmBaseUrl"
-    } else {
-        Write-Warn "LiteLLM may still be initializing..."
+    # LiteLLM imports and validates its backend before serving model traffic.
+    $proxyReady = $false
+    for ($i = 0; $i -lt 30; $i++) {
+        Start-Sleep -Seconds 2
+        if (Test-JsonEndpoint -Uri "$litellmBaseUrl/models") {
+            $proxyReady = $true
+            break
+        }
     }
+    if (-not $proxyReady) {
+        throw "LiteLLM did not become ready within 60s. Check the LiteLLM process and logs."
+    }
+    Write-Ok "LiteLLM ready at $litellmBaseUrl"
 }
 
 # ─── Phase 3: webchat2api (Oracle) ──────────────────────────────
 
-if ($EnableHeadroom) {
+if ($headroomEnabled) {
     Write-Step "Phase 2b: Starting Headroom context proxy"
     $headroomScript = Join-Path $PSScriptRoot "Start-HeadroomHermes.ps1"
     if ($ForceHeadroomCompression) {
@@ -253,14 +259,14 @@ Write-Host ""
 
 $llamaUp = $null -ne (Test-JsonEndpoint -Uri "$llamaBaseUrl/models")
 $litellmUp = $null -ne (Test-JsonEndpoint -Uri "$litellmBaseUrl/models")
-$headroomUp = $EnableHeadroom -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$HeadroomPort/readyz"))
+$headroomUp = $headroomEnabled -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$HeadroomPort/health"))
 $oracleUp = $oracleEnabled -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$Webchat2ApiPort/v1/models"))
 
 Write-Host "  llama.cpp    : $(if($llamaUp){'[OK] Running'}else{'[FAIL] Not running'}) on port $LlamaPort" `
     -ForegroundColor $(if($llamaUp){'Green'}else{'Red'})
 Write-Host "  LiteLLM      : $(if($litellmUp){'[OK] Running'}else{'[FAIL] Not running'}) on port $LiteLLMPort" `
     -ForegroundColor $(if($litellmUp){'Green'}else{'Red'})
-if ($EnableHeadroom) {
+if ($headroomEnabled) {
     Write-Host "  Headroom     : $(if($headroomUp){'[OK] Running (memory enabled)'}else{'[FAIL] Not running'}) on port $HeadroomPort" `
         -ForegroundColor $(if($headroomUp){'Green'}else{'Red'})
 }
@@ -279,7 +285,7 @@ Write-Host ""
 Write-Host "  Endpoints:" -ForegroundColor DarkGray
 Write-Host "    Local:  http://127.0.0.1:$LlamaPort/v1   (llama.cpp direct)" -ForegroundColor DarkGray
 Write-Host "    Proxy:  http://127.0.0.1:$LiteLLMPort/v1   (LiteLLM OpenAI-compatible)" -ForegroundColor DarkGray
-if ($EnableHeadroom) {
+if ($headroomEnabled) {
     Write-Host "    Headroom: http://127.0.0.1:$HeadroomPort/v1  (context optimization + memory)" -ForegroundColor DarkGray
 }
 if ($oracleEnabled) {

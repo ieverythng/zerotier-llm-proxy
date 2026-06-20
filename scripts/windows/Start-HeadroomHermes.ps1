@@ -49,7 +49,7 @@ Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @(
 
 for ($attempt = 1; $attempt -le 30; $attempt++) {
     try {
-        $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/readyz" -TimeoutSec 2
+        $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2
         Write-Host "Headroom ready: http://127.0.0.1:$Port/v1 -> $LiteLLMUpstream" -ForegroundColor Green
         exit 0
     } catch {
