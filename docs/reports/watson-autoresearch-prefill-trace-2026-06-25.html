@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watson Autoresearch Prefill Trace — 2026-06-25</title>
+  <style>
+    :root { color-scheme: dark; --bg:#080b12; --panel:#101827; --line:#26364f; --text:#eaf2ff; --muted:#9fb0c7; --ok:#6ee7b7; --warn:#fbbf24; --bad:#fb7185; --blue:#75e6ff; }
+    body { margin:0; background:radial-gradient(circle at 10% 0%,#18233a 0,#080b12 38%,#05070b 100%); color:var(--text); font-family:Inter,Segoe UI,system-ui,sans-serif; line-height:1.55; }
+    main { max-width:1220px; margin:0 auto; padding:36px 22px 80px; }
+    h1 { font-size:clamp(34px,5vw,60px); line-height:1.02; letter-spacing:-.045em; margin:12px 0; }
+    h2 { margin-top:34px; }
+    .lead { color:#c4d2e8; font-size:18px; max-width:900px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin:20px 0; }
+    .card { background:linear-gradient(180deg,var(--panel),#0d1421); border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 14px 40px #0005; }
+    .kpi { font-size:32px; font-weight:850; letter-spacing:-.04em; }
+    .muted { color:var(--muted); }
+    svg { width:100%; height:auto; background:#0b1220; border:1px solid var(--line); border-radius:18px; }
+    .gridline, .grid { stroke:#213049; stroke-width:1; }
+    .axis { stroke:#51647f; stroke-width:1.5; }
+    .raw { fill:none; stroke:#75e6ff88; stroke-width:2; }
+    .best { fill:none; stroke:#6ee7b7; stroke-width:3; }
+    circle { stroke:#07101e; stroke-width:3; }
+    circle.keep { fill:var(--ok); }
+    circle.repeat { fill:var(--warn); }
+    circle.discard { fill:var(--muted); }
+    circle.crash { fill:var(--bad); }
+    text { fill:#cfe3ff; font-size:12px; }
+    table { width:100%; border-collapse:collapse; background:#0c1320; border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+    th,td { border-bottom:1px solid var(--line); padding:10px 12px; text-align:left; }
+    th { color:#b8d7ff; background:#121e31; text-transform:uppercase; font-size:12px; }
+    code { color:#d9ecff; }
+    .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:7px; }
+    .dot.keep { background:var(--ok); } .dot.repeat { background:var(--warn); } .dot.discard { background:var(--muted); } .dot.crash { background:var(--bad); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Watson Autoresearch Prefill Trace — 2026-06-25</h1>
+  <p class="lead">Karpathy-style optimization trace for 61k cold direct prefill throughput. Higher prompt_per_second is better; each point is one tested launcher/runtime modification.</p>
+  <div class="grid">
+    <div class="card"><div class="muted">Optimized metric</div><div class="kpi">prompt_per_second</div><div class="muted">higher is better</div></div>
+    <div class="card"><div class="muted">Best observed</div><div class="kpi">1340.942</div><div class="muted">prompt tokens/sec</div></div>
+    <div class="card"><div class="muted">Improvement from first point</div><div class="kpi">+10.5%</div><div class="muted">search metric delta</div></div>
+    <div class="card"><div class="muted">Experiments plotted</div><div class="kpi">5</div><div class="muted">baseline/challengers/repeats</div></div>
+  </div>
+  <svg viewBox="0 0 1120 430" role="img" aria-label="Autoresearch optimization trace">
+    <line x1='70' x2='1090' y1='364.0' y2='364.0' class='grid'/><text x='60' y='368.0' text-anchor='end'>1187</text><line x1='70' x2='1090' y1='280.0' y2='280.0' class='grid'/><text x='60' y='284.0' text-anchor='end'>1232</text><line x1='70' x2='1090' y1='196.0' y2='196.0' class='grid'/><text x='60' y='200.0' text-anchor='end'>1277</text><line x1='70' x2='1090' y1='112.0' y2='112.0' class='grid'/><text x='60' y='116.0' text-anchor='end'>1323</text><line x1='70' x2='1090' y1='28.0' y2='28.0' class='grid'/><text x='60' y='32.0' text-anchor='end'>1368</text>
+    <line x1="70" x2="1090" y1="364" y2="364" class="axis"/>
+    <line x1="70" x2="70" y1="28" y2="364" class="axis"/>
+    <path d="M70.0,314.1 L325.0,163.9 L580.0,173.4 L835.0,77.9 L1090.0,140.8" class="raw"/>
+    <path d="M70.0,314.1 L325.0,163.9 L580.0,163.9 L835.0,77.9 L1090.0,77.9" class="best"/>
+    <circle class='keep' cx='70.0' cy='314.1' r='7'><title>current-65k-default @ 60k: 1213.997</title></circle><circle class='keep' cx='325.0' cy='163.9' r='7'><title>b1024-ub512 @ 60k: 1294.740</title></circle><circle class='discard' cx='580.0' cy='173.4' r='7'><title>b2048-ub512 @ 60k: 1289.601</title></circle><circle class='keep' cx='835.0' cy='77.9' r='7'><title>b1024-ub1024 @ 60k: 1340.942</title></circle><circle class='repeat' cx='1090.0' cy='140.8' r='7'><title>b1024-ub1024-repeat @ 60k: 1307.122</title></circle>
+    <text x='70.0' y='302.1' text-anchor='middle'>current-65k-default @ 60k</text><text x='325.0' y='151.9' text-anchor='middle'>b1024-ub512 @ 60k</text><text x='835.0' y='65.9' text-anchor='middle'>b1024-ub1024 @ 60k</text><text x='1090.0' y='128.8' text-anchor='middle'>b1024-ub1024-repeat @ 60k</text>
+    <text x="70" y="408">experiment step</text>
+    <text x="18" y="46" transform="rotate(-90 18,46)">prompt_per_second</text>
+  </svg>
+  <h2>Experiment ledger</h2>
+  <table>
+    <tr><th>Step</th><th>Status</th><th>Metric</th><th>Change</th><th>Elapsed s</th><th>Prompt n</th><th>Artifact</th></tr>
+    <tr><td>0</td><td><span class='dot keep'></span>keep</td><td>1213.997</td><td>current-65k-default @ 60k</td><td>39.873</td><td>43917</td><td><code>results.csv</code></td></tr><tr><td>1</td><td><span class='dot keep'></span>keep</td><td>1294.740</td><td>b1024-ub512 @ 60k</td><td>33.766</td><td>42091</td><td><code>results.csv</code></td></tr><tr><td>2</td><td><span class='dot discard'></span>discard</td><td>1289.601</td><td>b2048-ub512 @ 60k</td><td>33.869</td><td>42091</td><td><code>results.csv</code></td></tr><tr><td>3</td><td><span class='dot keep'></span>keep</td><td>1340.942</td><td>b1024-ub1024 @ 60k</td><td>32.648</td><td>42092</td><td><code>results.csv</code></td></tr><tr><td>4</td><td><span class='dot repeat'></span>repeat</td><td>1307.122</td><td>b1024-ub1024-repeat @ 60k</td><td>33.100</td><td>42080</td><td><code>results.csv</code></td></tr>
+  </table>
+</main>
+</body>
+</html>

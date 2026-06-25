@@ -23,7 +23,7 @@ Windows Host (GPU)                    WSL (Orchestration)
         └──────────────────────┘
 ```
 
-**Full architecture diagram:** [docs/architecture.html](docs/architecture.html)
+**Full architecture diagram:** [docs/architecture/zerotier-llm-proxy-architecture.html](docs/architecture/zerotier-llm-proxy-architecture.html)
 
 ## Lucebox/DFlash Pilot
 
@@ -54,7 +54,7 @@ Current endpoints when running:
 Current measured recommendation: use llama.cpp TurboQuant with the Qwen3.6
 MTP pi-tune model for normal Hermes/Codex work. The stable model name remains
 `qwen36-turbo-hermes`; LiteLLM selects the active backend. See the
-[benchmark suite](docs/local-llm-benchmark-suite-2026-06-19.md) for measured
+[benchmark suite](docs/reports/local-llm-benchmark-suite-2026-06-19.md) for measured
 prefill, decode, compatibility, and memory findings.
 
 ## Context Management POC
@@ -201,7 +201,7 @@ Or via the unified script:
 ```
 zerotier-llm-proxy/
 ├── config/server/litellm-config.yaml    # LiteLLM backend config
-├── docs/architecture.html               # Full architecture documentation
+├── docs/architecture/                   # Architecture documentation
 ├── scripts/windows/                     # PowerShell scripts
 └── README.md                            # This file
 ```

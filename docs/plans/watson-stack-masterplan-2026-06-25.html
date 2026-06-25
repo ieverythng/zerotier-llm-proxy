@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watson Stack Masterplan — 2026-06-25</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#e6edf3; --muted:#9da7b3; --accent:#58a6ff; --ok:#3fb950; --warn:#d29922; }
+    body { margin:0; font-family:Segoe UI, system-ui, sans-serif; background:linear-gradient(180deg,#0d1117,#101827); color:var(--text); line-height:1.55; }
+    main { max-width:1120px; margin:0 auto; padding:42px 24px 70px; }
+    h1 { font-size:42px; margin:0 0 8px; }
+    h2 { margin-top:34px; border-bottom:1px solid var(--line); padding-bottom:8px; }
+    .muted { color:var(--muted); }
+    .hero, .card { background:rgba(22,27,34,.92); border:1px solid var(--line); border-radius:16px; padding:20px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px; }
+    .lane { border-left:4px solid var(--accent); }
+    .ok { color:var(--ok); }
+    .warn { color:var(--warn); }
+    code { background:#0b1220; border:1px solid var(--line); border-radius:6px; padding:2px 5px; }
+    ol li, ul li { margin:6px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <h1>Watson Stack Masterplan</h1>
+    <p class="muted">Make the local Watson/Hermes inference stack recoverable, measurable, and usable at the highest context size that still behaves well in Discord.</p>
+    <p><strong>Current decision:</strong> keep <span class="ok">65k</span> as the interactive default; treat <span class="warn">80k+</span> as high-context candidates pending prefill measurements.</p>
+  </section>
+
+  <h2>Workstreams</h2>
+  <div class="grid">
+    <div class="card lane"><strong>Runtime correctness</strong><br>Canonical launcher, context-aware reloads, Lazarus recovery, Hermes stale-import restart procedure.</div>
+    <div class="card lane"><strong>Prefill measurement</strong><br>Separate time-to-first-token from decode tok/s, sweep upward from 4k to 65k before retesting 80k+.</div>
+    <div class="card lane"><strong>High-context profiles</strong><br>Promote only contexts that clear usability, quality, and recovery gates.</div>
+    <div class="card lane"><strong>Documentation</strong><br>NAO-style layout: architecture, plans, artifacts, reports, knowledge, traces.</div>
+  </div>
+
+  <h2>Immediate sequence</h2>
+  <ol>
+    <li>Restore 65k through Lazarus and the canonical Windows launcher.</li>
+    <li>Run smoke and functional harness checks.</li>
+    <li>Run the staged prefill sweep from 4k upward.</li>
+    <li>Store measured output in <code>docs/reports/</code>.</li>
+    <li>Update the benchmark matrix artifact after real measurements exist.</li>
+  </ol>
+
+  <h2>Promotion criteria</h2>
+  <ul>
+    <li>Correct live model alias and <code>meta.n_ctx</code>.</li>
+    <li>Proxy smoke passes.</li>
+    <li>Watson harness passes completion and tool-fidelity checks.</li>
+    <li>Discord time-to-first-token is usable.</li>
+    <li>Lazarus can recover to 65k after failure.</li>
+  </ul>
+</main>
+</body>
+</html>

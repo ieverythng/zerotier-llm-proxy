@@ -1,0 +1,6 @@
+﻿step	status	decision	variant	prompt_per_second	batch_size	ubatch_size	target	elapsed_s	prompt_n	description	source
+0	keep	baseline	current-65k-default	1213.997	default	default	61440	39.873	43917	Baseline 65k cold direct prefill with current TurboQuant stack defaults	_tmp/bench/direct-prefill-current-65k/direct-prefill-current-65k-20260625_030822.csv
+1	keep	keep	b1024-ub512	1294.740	1024	512	61440	33.766	42091	Increase batch and ubatch to 1024/512; improves 61k cold prefill versus baseline	_tmp/bench/direct-prefill-batch-sweep-65k/single-b1024-ub512-20260625_031650.csv
+2	discard	discard	b2048-ub512	1289.601	2048	512	61440	33.869	42091	Raise batch to 2048 while keeping ubatch 512; slower than previous challenger	_tmp/bench/direct-prefill-batch-sweep-65k/single-b2048-ub512-20260625_032258.csv
+3	keep	keep	b1024-ub1024	1340.942	1024	1024	61440	32.648	42092	Raise ubatch to 1024 at batch 1024; best observed direct prefill throughput	_tmp/bench/direct-prefill-batch-sweep-65k/single-b1024-ub1024-20260625_033009.csv
+4	repeat	repeat	b1024-ub1024-repeat	1307.122	1024	1024	61440	33.100	42080	Repeat the best candidate; still above baseline but below first win, so needs another confirmation and task gate	_tmp/bench/autoresearch-prefill-loop/repeat-b1024-ub1024-61k-20260625_034455.csv

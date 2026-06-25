@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watson Prefill Throughput Optimization Framework — 2026-06-25</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b13;
+      --panel: #101827;
+      --panel2: #141f32;
+      --line: #29384f;
+      --text: #eaf2ff;
+      --muted: #9fb0c7;
+      --accent: #75e6ff;
+      --accent2: #a78bfa;
+      --ok: #6ee7b7;
+      --warn: #fbbf24;
+      --bad: #fb7185;
+      --blue: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 12% 0%, #1a2740 0, var(--bg) 38%, #05070b 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+      line-height: 1.55;
+    }
+    a { color: var(--accent); }
+    main { max-width: 1220px; margin: 0 auto; padding: 38px 22px 80px; }
+    h1 { font-size: clamp(34px, 5vw, 62px); line-height: 1.02; margin: 16px 0; letter-spacing: -0.045em; }
+    h2 { font-size: 29px; margin: 0 0 14px; letter-spacing: -0.025em; }
+    h3 { margin: 0 0 10px; }
+    p { margin: 0 0 12px; }
+    code, pre { background: #07101e; border: 1px solid #1d2c43; border-radius: 10px; }
+    code { padding: 2px 6px; }
+    pre { padding: 14px 16px; overflow: auto; color: #d9ecff; }
+    .hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 22px; align-items: stretch; }
+    .badge {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid #2d4261;
+      background: #0b1220cc;
+      border-radius: 999px;
+      color: #bfefff;
+      padding: 7px 12px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .lead { font-size: 19px; color: #c4d2e8; max-width: 820px; }
+    .section { margin-top: 38px; }
+    .grid { display: grid; gap: 16px; }
+    .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      background: linear-gradient(180deg, var(--panel), #0d1421);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 14px 40px #0005;
+    }
+    .muted { color: var(--muted); }
+    .callout { border-left: 4px solid var(--accent); background: #0b1b2d; border-radius: 12px; padding: 14px 16px; color: #cfe3ff; }
+    .callout.good { border-left-color: var(--ok); background: #082318; }
+    .callout.warn { border-left-color: var(--warn); background: #231b08; }
+    .callout.bad { border-left-color: var(--bad); background: #2a0f18; }
+    .pill {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid #33455f;
+      background: #101b2c;
+      color: #cfe6ff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .035em;
+      text-transform: uppercase;
+    }
+    .pill.good { border-color: #1f6b55; color: var(--ok); background: #09251d; }
+    .pill.warn { border-color: #7a5b12; color: var(--warn); background: #2b2108; }
+    .pill.bad { border-color: #7d2133; color: var(--bad); background: #2a0f18; }
+    .pill.blue { border-color: #285c92; color: #93c5fd; background: #0d1d31; }
+    .kpi { font-size: 34px; font-weight: 850; letter-spacing: -0.04em; margin-top: 8px; }
+    .table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border-radius: 16px; border: 1px solid var(--line); background: #0c1320; }
+    .table th, .table td { padding: 11px 13px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .table th { background: #121e31; text-align: left; color: #b8d7ff; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .table tr:last-child td { border-bottom: 0; }
+    .flow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }
+    .node { padding: 12px 14px; border: 1px solid #2c4568; background: #0e1a2b; border-radius: 14px; min-width: 125px; text-align: center; font-weight: 750; }
+    .arrow { color: var(--accent); font-weight: 900; }
+    .timeline { position: relative; }
+    .step { display: grid; grid-template-columns: 120px 1fr; gap: 14px; margin: 14px 0; }
+    .step .time { color: #93c5fd; font-weight: 850; }
+    .metric { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #223148; }
+    .metric:last-child { border-bottom: 0; }
+    .score { height: 10px; background: #142238; border-radius: 999px; overflow: hidden; }
+    .score span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 999px; }
+    .footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); color: #89a0bd; font-size: 13px; }
+    @media (max-width: 900px) {
+      .hero, .g2, .g3, .g4 { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="card">
+      <span class="badge">Watson · Hermes · Discord · llama.cpp · Headroom</span>
+      <h1>Prefill throughput optimization framework</h1>
+      <p class="lead">A rigorous optimization plan for improving local Hermes/Discord agent throughput. The goal is not just larger context; the goal is lower full-task elapsed time with preserved tool correctness.</p>
+      <div class="flow">
+        <div class="node">Discord task</div><div class="arrow">→</div>
+        <div class="node">Hermes</div><div class="arrow">→</div>
+        <div class="node">Headroom</div><div class="arrow">→</div>
+        <div class="node">LiteLLM</div><div class="arrow">→</div>
+        <div class="node">llama.cpp</div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card"><span class="pill good">Default</span><div class="kpi">65k</div><p class="muted">Keep as the interactive route until another profile wins on full task elapsed time.</p></div>
+      <div class="card"><span class="pill warn">Open question</span><div class="kpi">32k→61k</div><p class="muted">Elapsed time flattened while cached tokens rose sharply. Treat this as a cache-effect hypothesis.</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="callout good"><strong>Executive decision:</strong> the 65k profile is healthy, but the current baseline is not a pure prefill benchmark. The next sweep must separate cold-cache prefill, warm-prefix-cache prefill, decode, Headroom compression, tool correctness, and complete Discord task time.</div>
+  </section>
+
+  <section class="section">
+    <h2>Measured baseline</h2>
+    <table class="table">
+      <tr><th>Target</th><th>Prompt tokens</th><th>Cached tokens</th><th>Elapsed</th><th>Completion tok/s est.</th><th>Interpretation</th></tr>
+      <tr><td>4k</td><td>4,134</td><td>4,130</td><td>1.218s</td><td>36.123</td><td>Almost fully cached; not cold prefill.</td></tr>
+      <tr><td>8k</td><td>8,187</td><td>3,874</td><td>4.606s</td><td>6.513</td><td>Partial cache reuse.</td></tr>
+      <tr><td>16k</td><td>16,293</td><td>7,927</td><td>6.901s</td><td>6.375</td><td>Partial cache reuse.</td></tr>
+      <tr><td>32k</td><td>32,484</td><td>16,033</td><td>15.560s</td><td>2.828</td><td>Large-context checkpoint.</td></tr>
+      <tr><td>48k</td><td>48,675</td><td>32,224</td><td>17.998s</td><td>2.445</td><td>Warm-prefix behavior likely dominates.</td></tr>
+      <tr><td>61k</td><td>60,813</td><td>48,415</td><td>15.889s</td><td>2.769</td><td>Non-monotonic; likely cache and prompt-shape effect.</td></tr>
+    </table>
+  </section>
+
+  <section class="section grid g2">
+    <div class="card">
+      <h2>Source-backed levers</h2>
+      <p>llama.cpp exposes prompt-cache and timing signals that are directly relevant here: <code>cache_n</code>, <code>prompt_n</code>, <code>prompt_ms</code>, <code>prompt_per_second</code>, <code>predicted_ms</code>, and <code>predicted_per_second</code>.</p>
+      <p>The server knobs to test first are <code>n_ctx</code>, <code>n_batch</code>, <code>n_ubatch</code>, Flash Attention, KV K/V cache type, <code>--cache-prompt</code>, <code>--cache-reuse</code>, <code>--metrics</code>, and <code>--perf</code>.</p>
+    </div>
+    <div class="card">
+      <h2>Prefix-cache model</h2>
+      <p>vLLM's automatic prefix caching documentation describes the same workload class: repeated long-prefix and multi-round chat workloads get faster during prefilling, while decode-heavy workloads benefit less.</p>
+      <p>That maps directly onto Hermes/Discord: long channel history and repeated tool output can be either a prefill tax or a cache/compression opportunity.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Four-layer optimization model</h2>
+    <div class="grid g4">
+      <div class="card"><span class="pill blue">Layer 1</span><h3>Measurement correctness</h3><p class="muted">TTFB, TTFT, prefill timings, decode timings, cache hit/miss state, GPU/VRAM snapshots.</p></div>
+      <div class="card"><span class="pill blue">Layer 2</span><h3>llama.cpp knobs</h3><p class="muted">Context, batch, ubatch, Flash Attention, KV cache types, prompt cache, metrics, perf timings.</p></div>
+      <div class="card"><span class="pill blue">Layer 3</span><h3>Agent route</h3><p class="muted">Headroom on/off, forced compression, ledger injection, tool-output compression, Discord task shape.</p></div>
+      <div class="card"><span class="pill blue">Layer 4</span><h3>Backend experiments</h3><p class="muted">TurboQuant baseline, 80k/96k candidates, DFlash gates, vLLM sidecar/native-model evaluation.</p></div>
+    </div>
+  </section>
+
+  <section class="section grid g2">
+    <div class="card">
+      <h2>Plateau investigation</h2>
+      <table class="table">
+        <tr><th>Run</th><th>Cache mode</th><th>Prompt shape</th><th>Signal</th></tr>
+        <tr><td>A</td><td>cold</td><td>restart or cache-bust first</td><td>Actual uncached prefill.</td></tr>
+        <tr><td>B</td><td>warm identical</td><td>repeat exact request</td><td>Maximum prefix reuse.</td></tr>
+        <tr><td>C</td><td>warm suffix-change</td><td>same prefix, new task suffix</td><td>Discord continuation behavior.</td></tr>
+        <tr><td>D</td><td>prefix-broken</td><td>change early prefix token</td><td>Prefix sensitivity proof.</td></tr>
+        <tr><td>E</td><td>Headroom-on</td><td>same corpus through Headroom</td><td>Compression versus proxy overhead.</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Required report fields</h2>
+      <div class="metric"><span>Request timings</span><strong>TTFB / TTFT / elapsed</strong></div>
+      <div class="metric"><span>Prefill</span><strong>prompt_ms / prompt_per_second</strong></div>
+      <div class="metric"><span>Decode</span><strong>predicted_ms / predicted_per_second</strong></div>
+      <div class="metric"><span>Cache</span><strong>cache_n / cached_tokens / prompt_n</strong></div>
+      <div class="metric"><span>Route</span><strong>Headroom removed tokens / latency</strong></div>
+      <div class="metric"><span>System</span><strong>VRAM before / peak / after</strong></div>
+      <div class="metric"><span>Agent</span><strong>tool JSON / task success</strong></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Optimization matrix</h2>
+    <div class="timeline">
+      <div class="step"><div class="time">Stage 0</div><div class="card"><strong>Freeze baseline.</strong> Restore 65k through Lazarus, verify context, and record model/build/profile/KV/route/GPU state.</div></div>
+      <div class="step"><div class="time">Stage 1</div><div class="card"><strong>Upgrade measurement.</strong> Add streaming TTFT, timings parsing, cache labels, controlled cache-busting, and GPU snapshots.</div></div>
+      <div class="step"><div class="time">Stage 2</div><div class="card"><strong>65k cold/warm baseline.</strong> Run 4k, 8k, 16k, 32k, 48k, and 61k across cold, warm-identical, suffix-change, and prefix-broken modes.</div></div>
+      <div class="step"><div class="time">Stage 3</div><div class="card"><strong>Runtime sweeps.</strong> Test batch/ubatch, KV cache variants, Headroom route, then 80k and 96k candidates using the winning 65k settings.</div></div>
+      <div class="step"><div class="time">Stage 4</div><div class="card"><strong>Agentic workflow score.</strong> Rank short chat, long continuation, multi-tool Discord task, file task, tool JSON, Lazarus recovery, and VRAM headroom.</div></div>
+    </div>
+  </section>
+
+  <section class="section grid g2">
+    <div class="card">
+      <h2>Promotion gates</h2>
+      <table class="table">
+        <tr><th>Profile</th><th>Rule</th></tr>
+        <tr><td>65k</td><td>Default unless another profile wins on full task elapsed time without correctness regression.</td></tr>
+        <tr><td>80k</td><td>Candidate only if TTFT and task elapsed stay acceptable on realistic Hermes tasks.</td></tr>
+        <tr><td>96k</td><td>Candidate only if 80k passes and the added context improves task quality.</td></tr>
+        <tr><td>128k</td><td>Stress/batch mode unless it passes the same Discord usability gates as 65k.</td></tr>
+        <tr><td>DFlash/vLLM</td><td>Experimental until local API, tool, latency, and VRAM gates pass.</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Deslop guardrails for code work</h2>
+      <p>Future harness changes should be narrow and behavior-preserving except for explicit metrics additions.</p>
+      <ul>
+        <li>Do not rewrite the harness broadly.</li>
+        <li>Extract repeated HTTP timing and cache parsing into helpers.</li>
+        <li>Keep launcher orchestration separate from benchmark measurement.</li>
+        <li>Fail explicitly when metrics are unavailable.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Next code work</h2>
+    <div class="card">
+      <pre>Enhance scripts/unix/watson-stack-harness.py and/or scripts/windows/Measure-Qwen36ProxyThroughput.ps1 to record:
+- streaming TTFT
+- response timings
+- cache_n, prompt_n, prompt_ms, prompt_per_second
+- predicted_ms, predicted_per_second
+- cached_tokens
+- headroom_tokens_removed
+- task_elapsed_s
+- GPU snapshots
+- cache mode labels
+- controlled cache-busting</pre>
+      <div class="callout warn"><strong>Invariant:</strong> Lazarus and all reruns continue to use <code>scripts/windows/Start-Qwen36ZeroTierStack.ps1</code> as the canonical stack launcher.</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Validation protocol</h2>
+    <div class="grid g3">
+      <div class="card"><span class="pill good">1</span><h3>Restore</h3><p>Restore 65k through Lazarus and verify <code>Test-Qwen36ContextMode.ps1</code>.</p></div>
+      <div class="card"><span class="pill good">2</span><h3>Measure</h3><p>Run cold, warm identical, suffix-change, prefix-broken, and Headroom on/off variants.</p></div>
+      <div class="card"><span class="pill good">3</span><h3>Recover</h3><p>End each sweep by restoring 65k and running proxy/context smoke checks.</p></div>
+    </div>
+    <div class="callout bad" style="margin-top:16px"><strong>Stop immediately</strong> on context mismatch, tool JSON regression, Discord-style tool loops, GPU saturation past the usability threshold, or unsafe VRAM headroom.</div>
+  </section>
+
+  <section class="footer">
+    <strong>Reference sources:</strong>
+    <a href="https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md">llama.cpp server README</a>,
+    <a href="https://manpages.debian.org/unstable/llama.cpp-tools/llama-server.1.en.html">llama-server manpage</a>,
+    <a href="https://docs.vllm.ai/en/latest/features/automatic_prefix_caching/">vLLM automatic prefix caching</a>,
+    <a href="https://docs.vllm.ai/en/stable/design/metrics/">vLLM metrics</a>.
+    Generated for the 2026-06-25 Watson optimization round.
+  </section>
+</main>
+</body>
+</html>

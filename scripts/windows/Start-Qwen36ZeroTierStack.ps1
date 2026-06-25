@@ -17,6 +17,8 @@ param(
     [string]$Model = "qwen36-turbo-hermes",
     [string]$Profile = "hermes-qwen36-64k",
     [int]$ContextSize = 65536,
+    [int]$BatchSize = 0,
+    [int]$UBatchSize = 0,
     [string]$ModelPath = "",
     [string]$BackendKey = "llama.cpp",
     [switch]$Metrics,
@@ -55,6 +57,16 @@ function Test-PortListening {
     return ($conn -ne $null)
 }
 
+function Get-LoadedModelContextSize {
+    param($Models, [string]$ModelName)
+
+    $entry = @($Models.data | Where-Object { $_.id -eq $ModelName } | Select-Object -First 1)
+    if ($entry.Count -eq 1 -and $null -ne $entry[0].meta.n_ctx) {
+        return [int]$entry[0].meta.n_ctx
+    }
+    return $null
+}
+
 # ─── Phase 0: Banner ────────────────────────────────────────────
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Magenta
@@ -80,9 +92,18 @@ if (-not $SkipLlamaStart) {
     $existingNames = @()
     if ($existingModels.data) { $existingNames += @($existingModels.data | ForEach-Object { $_.id }) }
     if ($existingModels.models) { $existingNames += @($existingModels.models | ForEach-Object { $_.id; $_.name; $_.model }) }
-    if ($existingModels -and $existingNames -contains $Model) {
-        Write-Ok "llama.cpp already healthy at $llamaBaseUrl (model: $Model)"
+    $existingContextSize = Get-LoadedModelContextSize -Models $existingModels -ModelName $Model
+    if ($existingModels -and $existingNames -contains $Model -and $existingContextSize -eq $ContextSize) {
+        Write-Ok "llama.cpp already healthy at $llamaBaseUrl (model: $Model, context: $existingContextSize)"
         $SkipLlamaStart = $true
+    } elseif ($existingModels -and $existingNames -contains $Model) {
+        Write-Warn "llama.cpp has model '$Model' at context $existingContextSize; requested $ContextSize. Reloading."
+        $stopScript = Join-Path $resolvedLlamaRepo "scripts\stop_llama_server.ps1"
+        if (-not (Test-Path -LiteralPath $stopScript)) {
+            throw "Cannot reload llama.cpp: stop script not found: $stopScript"
+        }
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $stopScript -Port $LlamaPort
+        Start-Sleep -Seconds 2
     }
 
     if (-not $SkipLlamaStart) {
@@ -96,7 +117,9 @@ if (-not $SkipLlamaStart) {
     )
 
     if ($ModelPath) { $llamaArgs += @("-ModelPath", $ModelPath) }
-    if ($Metrics)   { $llamaArgs += " -Metrics" }
+    if ($BatchSize -gt 0) { $llamaArgs += @("-BatchSize", $BatchSize) }
+    if ($UBatchSize -gt 0) { $llamaArgs += @("-UBatchSize", $UBatchSize) }
+    if ($Metrics)   { $llamaArgs += "-Metrics" }
 
     Write-Host "  Running: powershell $($llamaArgs -join ' ')" -ForegroundColor DarkGray
     & powershell.exe @llamaArgs
@@ -110,7 +133,8 @@ if (-not $SkipLlamaStart) {
         $modelNames = @()
         if ($models.data) { $modelNames += @($models.data | ForEach-Object { $_.id }) }
         if ($models.models) { $modelNames += @($models.models | ForEach-Object { $_.id; $_.name; $_.model }) }
-        if ($models -and $modelNames -contains $Model) {
+        $loadedContextSize = Get-LoadedModelContextSize -Models $models -ModelName $Model
+        if ($models -and $modelNames -contains $Model -and $loadedContextSize -eq $ContextSize) {
             $ready = $true
             break
         }
@@ -118,10 +142,10 @@ if (-not $SkipLlamaStart) {
 
     if (-not $ready) {
         Write-Fail "llama.cpp did not become ready within 60s"
-        throw "llama.cpp failed to start or load model '$Model'."
+        throw "llama.cpp failed to start model '$Model' at requested context $ContextSize."
     }
 
-    Write-Ok "llama.cpp ready at $llamaBaseUrl (model: $Model)"
+    Write-Ok "llama.cpp ready at $llamaBaseUrl (model: $Model, context: $ContextSize)"
     }
 } else {
     Write-Step "Phase 1: Skipping llama.cpp startup (user provided)"

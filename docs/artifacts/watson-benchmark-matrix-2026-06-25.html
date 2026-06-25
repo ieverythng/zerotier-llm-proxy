@@ -1,0 +1,54 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WatsonOW Benchmark Matrix</title><style>
+:root{
+  --bg:#080b12;--panel:#0f1624;--panel2:#121b2b;--ink:#eaf2ff;--muted:#9fb0c7;--line:#243248;--accent:#75e6ff;--accent2:#a78bfa;--good:#6ee7b7;--warn:#fbbf24;--bad:#fb7185;--blue:#60a5fa;
+}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 10% 0%,#18233a 0,#080b12 35%,#05070b 100%);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial,sans-serif;line-height:1.55}
+a{color:var(--accent)} .wrap{max-width:1220px;margin:auto;padding:36px 22px 80px}.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:center}.badge{display:inline-flex;gap:8px;align-items:center;border:1px solid #2d4261;background:#0b1220cc;border-radius:999px;color:#bfefff;padding:7px 12px;font-size:13px;font-weight:700;letter-spacing:.02em}.h1{font-size:clamp(34px,5vw,66px);line-height:1.02;margin:18px 0 16px;letter-spacing:-.05em}.lead{font-size:19px;color:#c4d2e8;max-width:760px}.heroimg{border:1px solid #293850;border-radius:18px;overflow:hidden;background:#0b1020;box-shadow:0 30px 90px #0008}.heroimg img{display:block;width:100%;height:auto}.grid{display:grid;gap:18px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{background:linear-gradient(180deg,#111a2c,#0d1421);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 14px 40px #0005}.card h3,.card h2{margin-top:0}.kpi{font-size:34px;font-weight:800;letter-spacing:-.04em}.muted{color:var(--muted)}.section{margin-top:42px}.section h2{font-size:30px;margin-bottom:12px;letter-spacing:-.03em}.pill{display:inline-block;padding:4px 9px;border-radius:999px;border:1px solid #33455f;background:#101b2c;color:#cfe6ff;font-size:12px;font-weight:700}.pill.good{border-color:#1f6b55;color:var(--good);background:#09251d}.pill.warn{border-color:#7a5b12;color:var(--warn);background:#2b2108}.pill.bad{border-color:#7d2133;color:var(--bad);background:#2a0f18}.pill.blue{border-color:#285c92;color:#93c5fd;background:#0d1d31}.table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border-radius:16px;border:1px solid var(--line);background:#0c1320}.table th,.table td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}.table th{background:#121e31;text-align:left;color:#b8d7ff;font-size:13px;text-transform:uppercase;letter-spacing:.04em}.table tr:last-child td{border-bottom:0}.code{background:#07101e;border:1px solid #1d2c43;border-radius:14px;padding:16px;overflow:auto;color:#d9ecff;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px}.flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.node{padding:12px 14px;border:1px solid #2c4568;background:#0e1a2b;border-radius:14px;min-width:130px;text-align:center;font-weight:700}.arrow{color:#7dd3fc;font-weight:900}.callout{border-left:4px solid var(--accent);background:#0b1b2d;border-radius:12px;padding:14px 16px;color:#cfe3ff}.callout.warn{border-left-color:var(--warn);background:#231b08}.callout.good{border-left-color:var(--good);background:#082318}.timeline{position:relative}.step{display:grid;grid-template-columns:120px 1fr;gap:14px;margin:14px 0}.step .time{color:#93c5fd;font-weight:800}.small{font-size:13px}.score{height:10px;background:#142238;border-radius:999px;overflow:hidden}.score span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:999px}.footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);color:#89a0bd;font-size:13px}@media(max-width:900px){.hero,.g2,.g3,.g4{grid-template-columns:1fr}.step{grid-template-columns:1fr}.h1{font-size:38px}}
+</style></head><body><main class="wrap">
+<span class="badge">🧪 WatsonOW Benchmark Matrix</span><h1 class="h1">Production gate for faster models, longer context, and swarm modes</h1><p class="lead">This file is the test protocol that decides whether Q2, 96k/128k context, DFlash, vLLM, or a new worker profile is allowed into the live Watson/Hermes stack.</p>
+<section class="section"><h2>Profiles to test</h2><table class="table"><tr><th>ID</th><th>Backend</th><th>Model / quant</th><th>Context</th><th>KV profile</th><th>Headroom</th><th>Status</th></tr>
+<tr><td>B0</td><td>llama.cpp</td><td>Qwen3.6 27B MTP Q3</td><td>65k</td><td>current</td><td>off/on</td><td>baseline</td></tr>
+<tr><td>C1</td><td>llama.cpp</td><td>Qwen3.6 27B MTP Q3</td><td>80k</td><td>current</td><td>on</td><td>candidate</td></tr>
+<tr><td>C2</td><td>llama.cpp</td><td>Qwen3.6 27B MTP Q3</td><td>96k</td><td>current/lower KV</td><td>on</td><td>candidate</td></tr>
+<tr><td>C3</td><td>llama.cpp</td><td>Qwen3.6 27B MTP Q3</td><td>112k</td><td>lower KV</td><td>on</td><td>stretch</td></tr>
+<tr><td>C4</td><td>llama.cpp</td><td>Qwen3.6 27B MTP Q3</td><td>128k</td><td>lower KV</td><td>on</td><td>stretch</td></tr>
+<tr><td>Q2</td><td>llama.cpp</td><td>Qwen3.6 27B Q2/Q2_K</td><td>96k/128k</td><td>current/lower KV</td><td>on</td><td>quality risk</td></tr>
+<tr><td>V1</td><td>vLLM</td><td>native HF quant worker</td><td>32k/64k</td><td>FP8 KV if stable</td><td>n/a</td><td>sidecar</td></tr>
+<tr><td>D1</td><td>DFlash</td><td>Q3 + correct draft</td><td>65k</td><td>documented safe profile</td><td>n/a</td><td>experimental</td></tr></table></section>
+<section class="section grid g2"><div class="card"><h2>Workload pack</h2><table class="table"><tr><th>Test</th><th>Pass condition</th></tr><tr><td>Short chat</td><td>TTFT and decode not worse than baseline by >15%.</td></tr><tr><td>Long prompt</td><td>Prefill stable; no timeout; output coherent.</td></tr><tr><td>Tool JSON</td><td>≥98% parseable arguments over 50 calls.</td></tr><tr><td>File task</td><td>Read, write, patch, summarize without re-running commands.</td></tr><tr><td>Discord E2E</td><td>Correct completion in live channel without runaway typing.</td></tr><tr><td>Headroom bloat</td><td>Token savings visible and no loss of required content.</td></tr></table></div><div class="card"><h2>Scoring formula</h2><div class="code">Score =
+  0.25 * normalized_decode_tok_s
++ 0.20 * normalized_prefill_tok_s
++ 0.20 * tool_success_rate
++ 0.15 * context_success_score
++ 0.10 * stability_score
++ 0.10 * VRAM_safety_score
+
+Promotion rule:
+- total score > baseline + 8%
+- no critical regression in tool success
+- no OOM/restart in 3 repeated runs
+- rollback script verified</div></div></section>
+<section class="section"><h2>Run order</h2><div class="timeline"><div class="step"><div class="time">1</div><div class="card">Run B0 three times and save JSON metrics.</div></div><div class="step"><div class="time">2</div><div class="card">Run C1/C2 before any Q2 experiment. Context first, quantization second.</div></div><div class="step"><div class="time">3</div><div class="card">Run Headroom on/off for identical Discord tasks and compare total prompt tokens.</div></div><div class="step"><div class="time">4</div><div class="card">Run Q2 only after the Q3 context ladder fails or leaves insufficient VRAM.</div></div><div class="step"><div class="time">5</div><div class="card">Run vLLM sidecar and DFlash in isolation; never over the live Discord route until they pass.</div></div></div></section>
+<section class="section"><h2>Minimal JSON result schema</h2><div class="code">{
+  "profile_id": "C2",
+  "backend": "llama.cpp",
+  "model": "qwen36-turbo-hermes",
+  "quant": "Q3_K_M_MTP",
+  "ctx_size": 98304,
+  "kv_cache": {"k":"q8_0", "v":"turbo2"},
+  "headroom": true,
+  "prompt_tokens": 0,
+  "completion_tokens": 0,
+  "ttft_s": 0.0,
+  "prefill_tok_s": 0.0,
+  "decode_tok_s": 0.0,
+  "wall_time_s": 0.0,
+  "vram_peak_mib": 0,
+  "ram_peak_mib": 0,
+  "tool_calls": 0,
+  "tool_json_valid": 0,
+  "tool_success": true,
+  "notes": ""
+}</div></section>
+<section class="footer">Generated 2026-06-22. Pair this with the main WatsonOW stack report.</section>
+</main></body></html>

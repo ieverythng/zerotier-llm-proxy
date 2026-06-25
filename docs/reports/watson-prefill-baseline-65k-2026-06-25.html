@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watson Prefill Baseline at 65k — 2026-06-25</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#e6edf3; --muted:#9da7b3; --accent:#58a6ff; --ok:#3fb950; --warn:#d29922; }
+    body { margin:0; font-family:Segoe UI, system-ui, sans-serif; background:#0d1117; color:var(--text); line-height:1.55; }
+    main { max-width:1120px; margin:0 auto; padding:42px 24px 70px; }
+    h1 { font-size:42px; margin:0 0 8px; }
+    h2 { margin-top:34px; border-bottom:1px solid var(--line); padding-bottom:8px; }
+    .muted { color:var(--muted); }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px; margin:16px 0; }
+    table { border-collapse:collapse; width:100%; margin:16px 0; }
+    th, td { border:1px solid var(--line); padding:10px; text-align:left; }
+    th { background:var(--panel); }
+    .ok { color:var(--ok); font-weight:600; }
+    .warn { color:var(--warn); font-weight:600; }
+    code { background:#0b1220; border:1px solid var(--line); border-radius:6px; padding:2px 5px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Watson Prefill Baseline at 65k</h1>
+  <p class="muted">Staged context checks for the current interactive profile. Date: 2026-06-25.</p>
+
+  <section class="card">
+    <h2>Summary</h2>
+    <p>The 65k profile is healthy. Checks from 4k through 61k returned HTTP 200, retained both context markers, and passed tool fidelity.</p>
+    <p class="warn">Caveat: this measures full request elapsed time, not true streaming time-to-first-token.</p>
+  </section>
+
+  <h2>Live context</h2>
+  <p>Direct llama.cpp endpoint <code>http://127.0.0.1:8080/v1/models</code> reported <code>meta.n_ctx = 65536</code> for <code>qwen36-turbo-hermes</code>.</p>
+
+  <h2>Results</h2>
+  <table>
+    <tr><th>Target context</th><th>Prompt tokens</th><th>Cached tokens</th><th>Elapsed seconds</th><th>Completion tok/s est.</th><th>Markers</th><th>Tool fidelity</th></tr>
+    <tr><td>4,096</td><td>4,134</td><td>4,130</td><td>1.218</td><td>36.123</td><td class="ok">pass</td><td class="ok">pass</td></tr>
+    <tr><td>8,192</td><td>8,187</td><td>3,874</td><td>4.606</td><td>6.513</td><td class="ok">pass</td><td class="ok">pass</td></tr>
+    <tr><td>16,384</td><td>16,293</td><td>7,927</td><td>6.901</td><td>6.375</td><td class="ok">pass</td><td class="ok">pass</td></tr>
+    <tr><td>32,768</td><td>32,484</td><td>16,033</td><td>15.560</td><td>2.828</td><td class="ok">pass</td><td class="ok">pass</td></tr>
+    <tr><td>49,152</td><td>48,675</td><td>32,224</td><td>17.998</td><td>2.445</td><td class="ok">pass</td><td class="ok">pass</td></tr>
+    <tr><td>61,440</td><td>60,813</td><td>48,415</td><td>15.889</td><td>2.769</td><td class="ok">pass</td><td class="ok">pass</td></tr>
+  </table>
+
+  <h2>Decision</h2>
+  <p>Keep 65k as the Discord-facing default. Retest 80k+ only after adding cold-cache/warm-cache labels and streaming time-to-first-token instrumentation.</p>
+</main>
+</body>
+</html>

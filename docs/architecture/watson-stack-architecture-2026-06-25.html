@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watson Stack Architecture — 2026-06-25</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#e6edf3; --muted:#9da7b3; --accent:#58a6ff; --ok:#3fb950; --warn:#d29922; }
+    body { margin:0; font-family:Segoe UI, system-ui, sans-serif; background:var(--bg); color:var(--text); line-height:1.55; }
+    main { max-width:1100px; margin:0 auto; padding:40px 24px 64px; }
+    h1, h2 { line-height:1.15; }
+    h1 { font-size:42px; margin-bottom:8px; }
+    h2 { margin-top:34px; border-bottom:1px solid var(--line); padding-bottom:8px; }
+    .muted { color:var(--muted); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; }
+    code, pre { background:#0b1220; border:1px solid var(--line); border-radius:8px; }
+    code { padding:2px 5px; }
+    pre { padding:14px; overflow:auto; }
+    .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; align-items:center; margin:20px 0; }
+    .node { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center; min-height:56px; display:flex; align-items:center; justify-content:center; }
+    .arrow { color:var(--accent); text-align:center; font-size:24px; }
+    .tag { display:inline-block; border:1px solid var(--line); border-radius:999px; padding:4px 10px; margin:3px; color:var(--muted); }
+    table { border-collapse:collapse; width:100%; }
+    th, td { border:1px solid var(--line); padding:10px; text-align:left; }
+    th { background:var(--panel); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Watson Stack Architecture</h1>
+  <p class="muted">Runtime contract and topology for Hermes, Lazarus, LiteLLM, ZeroTier, and llama.cpp. Date: 2026-06-25.</p>
+
+  <section class="card">
+    <h2>Canonical contract</h2>
+    <p>The stack is owned by the Windows launcher. Lazarus is the recovery and validation harness, not an alternate proxy owner.</p>
+    <pre>C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-Qwen36ZeroTierStack.ps1</pre>
+    <p>The launcher must verify both model alias and live <code>meta.n_ctx</code> before declaring the stack ready.</p>
+  </section>
+
+  <h2>Runtime topology</h2>
+  <div class="flow">
+    <div class="node">Discord / Hermes gateway</div><div class="arrow">→</div>
+    <div class="node">LiteLLM / ZeroTier proxy<br><code>:4000</code></div><div class="arrow">→</div>
+    <div class="node">llama.cpp server<br>Qwen36</div>
+  </div>
+  <div class="flow">
+    <div class="node">Lazarus<br>WSL recovery</div><div class="arrow">→</div>
+    <div class="node">Canonical Windows launcher</div><div class="arrow">→</div>
+    <div class="node">Context-aware reload</div>
+  </div>
+
+  <h2>Validation gates</h2>
+  <div class="grid">
+    <div class="card"><strong>Load gate</strong><br><span class="muted">/v1/models reports the requested alias and context.</span></div>
+    <div class="card"><strong>Smoke gate</strong><br><span class="muted">Windows proxy smoke returns <code>qwen36 proxy ok</code>.</span></div>
+    <div class="card"><strong>Functional gate</strong><br><span class="muted">Watson harness returns completion and valid tool JSON.</span></div>
+    <div class="card"><strong>Usability gate</strong><br><span class="muted">Time-to-first-token is acceptable in Discord.</span></div>
+  </div>
+
+  <h2>Context finding</h2>
+  <table>
+    <tr><th>Profile</th><th>Status</th><th>Interpretation</th></tr>
+    <tr><td>65k</td><td>Stable interactive default</td><td>Known-good recovery target.</td></tr>
+    <tr><td>80k</td><td>Loaded but not interactive in synthetic prefill test</td><td>Needs staged prefill measurement before promotion.</td></tr>
+    <tr><td>128k</td><td>Loadable</td><td>Research/batch mode unless prefill improves.</td></tr>
+  </table>
+
+  <h2>Operational tags</h2>
+  <p><span class="tag">Hermes</span><span class="tag">Lazarus</span><span class="tag">LiteLLM</span><span class="tag">ZeroTier</span><span class="tag">llama.cpp</span><span class="tag">prefill</span><span class="tag">65k default</span></p>
+</main>
+</body>
+</html>

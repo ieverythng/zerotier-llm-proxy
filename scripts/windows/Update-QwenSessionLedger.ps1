@@ -18,7 +18,7 @@ if (-not $LedgerPath) {
     $LedgerPath = Join-Path $repoRoot "_tmp\session-ledger.md"
 }
 
-$templatePath = Join-Path $repoRoot "docs\session-ledger-template.md"
+$templatePath = Join-Path $repoRoot "docs\traces\session-ledger-template.md"
 $ledgerParent = Split-Path -Parent $LedgerPath
 if ($ledgerParent) {
     New-Item -ItemType Directory -Force -Path $ledgerParent | Out-Null

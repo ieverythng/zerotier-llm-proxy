@@ -5,7 +5,7 @@ Last updated: 2026-06-19
 > **Superseded for production use.** The 16GB RTX 5070 Ti cannot run the
 > documented DFlash Qwen3.6 target-plus-draft configuration with reliable VRAM
 > headroom. Do not use this runbook's earlier `skip-park` recommendations.
-> See [the benchmark suite](local-llm-benchmark-suite-2026-06-19.md) for the
+> See [the benchmark suite](../reports/local-llm-benchmark-suite-2026-06-19.md) for the
 > current llama.cpp MTP recommendation and the guarded experimental DFlash path.
 
 This repo now has a Lucebox/DFlash stack that can replace the prior
