@@ -5,3 +5,6 @@ _tmp/
 /.runtime/headroom/.venv
 /.runtime/
 /.headroom/
+/headroom_memory.db
+__pycache__/
+*.pyc

@@ -76,8 +76,7 @@ runtime architecture, scripts, cutover, and rollback procedure.
 This launches:
 1. **llama.cpp** — Qwen3.8 IQ3_S on port 8080 (100,096-token allocation by default)
 2. **LiteLLM Proxy** — OpenAI-compatible API on port 4000
-3. **Codex Responses bridge** — local compatibility endpoint on port 4001
-4. **Headroom** — context/memory proxy on port 8787
+3. **Headroom** — context/memory proxy on port 8787
 
 The GPT-5 Oracle (`webchat2api`) is opt-in; add `-EnableOracle` when you need it.
 
@@ -104,33 +103,66 @@ explicit non-default launcher is supplied.
 
 ### Codex CLI profile
 
-The ChatGPT-account desktop client cannot run arbitrary local model slugs. For
-local Watson work, use the Codex CLI profile below. The stack launcher starts the
-Responses compatibility bridge automatically; the installer registers the
-provider and profile in the user's Codex home without changing the default
-model:
+Install the repo-owned local provider, profile, and model catalog. The installer
+reads the context window from live llama.cpp metadata and does not change the
+default hosted model:
 
 ```powershell
 .\scripts\windows\Install-CodexQwen38WatsonProfile.ps1
 codex exec --profile qwen38-watson "Say hello"
 ```
 
-The bridge preserves supported messages, tool calls, and reasoning items while
-discarding only Responses item types that the installed llama.cpp converter does
-not understand. It is a transport-compatibility layer, not a model or context
-compression layer. `qwen3.8` remains configured with the live 100,096-token
-context value.
+The local catalog entry deliberately uses standard Responses transport
+(`use_responses_lite=false`) and remains visible in API-key mode
+(`supported_in_api=true`). Responses Lite is an OpenAI-hosted contract that
+moves tools into an `additional_tools` input item; standard llama.cpp and Ollama
+Responses endpoints expect top-level tools instead.
+
+### Codex/ChatGPT desktop app
+
+The desktop app supports local models through its API-mode base URL, which is
+the same public configuration seam used by `ollama launch chatgpt`. Configure
+the app to use the proper Watson stack with:
+
+```powershell
+.\scripts\windows\Install-CodexQwen38WatsonProfile.ps1
+.\scripts\windows\Set-CodexDesktopWatson.ps1
+```
+
+Restart the app after switching. The script keeps one restore copy of the user
+configuration; return to the normal ChatGPT-hosted route with:
+
+```powershell
+.\scripts\windows\Set-CodexDesktopWatson.ps1 -Restore
+```
+
+Desktop mode removes the explicit `model_provider` and sets the top-level
+`openai_base_url`, as required by the app's API-key request path. It refuses to
+activate unless the selected catalog model is marked API-capable and is not a
+Responses-Lite model.
 
 ### Ollama fallback
 
 The repository includes an import recipe at
-`config/ollama/Qwen3.8.Modelfile`. Ollama 0.34.0 currently registers the GGUF
-but its runner reports `unknown model architecture: qwen35` when loading it, so
-the Qwen3.8 Ollama route is not usable until an Ollama release with Qwen3.8
-support is installed. The supported local-provider command is otherwise:
+`config/ollama/Qwen3.8.Modelfile`. Use Windows Ollama 0.24 or newer; do not leave
+an older WSL server bound to port 11434 because the Windows client will silently
+talk to that server. Import with:
 
 ```powershell
-codex --oss --local-provider ollama -m qwen3.8-watson "Say hello"
+ollama create qwen3.8-watson -f .\config\ollama\Qwen3.8.Modelfile
+```
+
+On Windows Ollama 0.34.0 this GGUF imports and its `qwen35` architecture loads,
+but the bundled runner currently terminates the request at inference start and
+returns HTTP 500. Treat it as a staged fallback until the `/api/chat` gate below
+passes; do not route the app to it merely because `ollama create` succeeded.
+Once a compatible runner is available, launch the supported integration with
+`ollama launch chatgpt --model qwen3.8-watson`.
+
+The equivalent Codex CLI route is:
+
+```powershell
+codex --oss --local-provider ollama -m qwen3.8-watson:latest "Say hello"
 ```
 
 Do not treat a successful `ollama create` alone as proof of readiness; always
@@ -143,7 +175,6 @@ load errors.
 |---------|-------|----------|
 | llama.cpp | `http://127.0.0.1:8080/v1` | — |
 | LiteLLM Proxy | `http://127.0.0.1:4000/v1` | `http://10.88.140.94:4000/v1` |
-| Codex Responses bridge | `http://127.0.0.1:4001/v1` | — |
 | webchat2api (Oracle) | `http://127.0.0.1:9000/v1` | — |
 
 ## GPT-5 Oracle (webchat2api)
