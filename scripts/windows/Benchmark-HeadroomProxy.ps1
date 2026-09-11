@@ -2,7 +2,7 @@
 param(
     [string]$DirectBaseUrl = "http://127.0.0.1:4000/v1",
     [string]$HeadroomBaseUrl = "http://127.0.0.1:8787/v1",
-    [string]$Model = "qwen36-turbo-hermes",
+    [string]$Model = "qwen3.8",
     [int]$ToolOutputRepeats = 220,
     [int]$MaxTokens = 48,
     [string]$OutFile = ""

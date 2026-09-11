@@ -1,0 +1,56 @@
+﻿{
+    "variant":  "bonsai-author-default",
+    "base_url":  "http://127.0.0.1:8080/v1",
+    "model":  "qwen36-turbo-hermes",
+    "generated_at":  "2026-07-29T15:25:21.1281355+02:00",
+    "passed":  0,
+    "total":  5,
+    "total_elapsed_s":  11.088,
+    "rows":  [
+                 {
+                     "case":  "context_explanation",
+                     "passed":  false,
+                     "reason":  "words=0 runtime=False kv=False",
+                     "elapsed_s":  2.54,
+                     "word_count":  0,
+                     "output":  "",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "code_diagnosis_json",
+                     "passed":  false,
+                     "reason":  "strict JSON and corrected bound=False",
+                     "elapsed_s":  1.984,
+                     "word_count":  0,
+                     "output":  "",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "constraint_plan_json",
+                     "passed":  false,
+                     "reason":  "order=",
+                     "elapsed_s":  1.449,
+                     "word_count":  0,
+                     "output":  "",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "uncertainty_restraint",
+                     "passed":  false,
+                     "reason":  "admits_unknown=False requests_evidence=False",
+                     "elapsed_s":  2.419,
+                     "word_count":  0,
+                     "output":  "",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "discord_response_style",
+                     "passed":  false,
+                     "reason":  "words=0 bullets=0 prefill=False measurements=False",
+                     "elapsed_s":  2.696,
+                     "word_count":  0,
+                     "output":  "",
+                     "error":  ""
+                 }
+             ]
+}

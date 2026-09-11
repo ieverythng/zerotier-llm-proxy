@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-09-01T14:38:31.3812876Z",
+  "fact": "DISPOSABLE_GLOBAL_HEADROOM_PROBE_20260901163822",
+  "status": "completed",
+  "usage": {
+    "input_tokens": 2884,
+    "input_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": 2796,
+      "text_tokens": null
+    },
+    "output_tokens": 66,
+    "output_tokens_details": null,
+    "total_tokens": 2950,
+    "cost": null
+  },
+  "assistant_text": "Saved the fact `DISPOSABLE_GLOBAL_HEADROOM_PROBE_20260901163822` to memory (ID: 83d1b058-b946-4716-84de-a47ed6defb1f).",
+  "output": [
+    {
+      "id": "msg_2TPCwHYDBeMX42kiWMJ75TPxFzaEzpW8",
+      "content": [
+        {
+          "annotations": [],
+          "text": "Saved the fact `DISPOSABLE_GLOBAL_HEADROOM_PROBE_20260901163822` to memory (ID: 83d1b058-b946-4716-84de-a47ed6defb1f).",
+          "type": "output_text",
+          "logprobs": []
+        }
+      ],
+      "role": "assistant",
+      "status": "completed",
+      "type": "message",
+      "phase": null
+    }
+  ]
+}

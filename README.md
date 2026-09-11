@@ -8,7 +8,7 @@ Serve local LLM inference over a [ZeroTier](https://www.zerotier.com/) overlay n
 Windows Host (GPU)                    WSL (Orchestration)
 ┌──────────────┐                      ┌──────────────┐
 │  llama.cpp   │:8080                 │  Hermes      │:8001
-│  (Qwen3.6)   │───┐                  │  Gateway     │
+│  (Qwen3.8)   │───┐                  │  Gateway     │
 └──────────────┘   │                  └──────────────┘
                    ▼
             ┌──────────────┐          ┌──────────────┐
@@ -51,17 +51,17 @@ Current endpoints when running:
 | DFlash compatibility proxy | `http://10.88.140.94:18080/v1` |
 | LiteLLM / Hermes | `http://10.88.140.94:4000/v1` |
 
-Current measured recommendation: use llama.cpp TurboQuant with the Qwen3.6
-MTP pi-tune model for normal Hermes/Codex work. The stable model name remains
-`qwen36-turbo-hermes`; LiteLLM selects the active backend. See the
+Current measured recommendation: use llama.cpp with the Qwen3.8 IQ3_S GGUF for
+normal Hermes/Codex work. The canonical model name is `qwen3.8`; LiteLLM also
+preserves the historical `qwen36-turbo-hermes` aliases. See the
 [benchmark suite](docs/reports/local-llm-benchmark-suite-2026-06-19.md) for measured
 prefill, decode, compatibility, and memory findings.
 
 ## Context Management POC
 
-[Headroom](docs/headroom-hermes-poc.md) is staged as an optional local proxy
-between Hermes and LiteLLM. It targets tool-output and history growth; it is not
-enabled by default and does not replace the model backend.
+[Headroom](docs/headroom-hermes-poc.md) runs as the default local proxy between
+Hermes and LiteLLM. It targets tool-output and history growth and does not
+replace the model backend.
 See the [HTML operational guide](docs/headroom-hermes-integration.html) for the
 runtime architecture, scripts, cutover, and rollback procedure.
 
@@ -70,28 +70,72 @@ runtime architecture, scripts, cutover, and rollback procedure.
 ### Start Everything (One Command)
 
 ```powershell
-.\scripts\windows\Start-Qwen36ZeroTierStack.ps1
+.\scripts\windows\Start-WatsonStack.ps1
 ```
 
 This launches:
-1. **llama.cpp** — Qwen3.6 TurboQuant Hermes on port 8080
+1. **llama.cpp** — Qwen3.8 IQ3_S on port 8080 (100,096-token allocation by default)
 2. **LiteLLM Proxy** — OpenAI-compatible API on port 4000
-3. **webchat2api** — GPT-5 Oracle on port 9000 (via WSL)
+3. **Codex Responses bridge** — local compatibility endpoint on port 4001
+4. **Headroom** — context/memory proxy on port 8787
+
+The GPT-5 Oracle (`webchat2api`) is opt-in; add `-EnableOracle` when you need it.
+
+The Qwen3.8 default is pinned to the verified official CUDA 13.3 build at
+`C:\Users\Admin\PROJECTS\llama-b10621-win-cuda133`. Startup checks the loaded
+executable identity and performs two bounded coherence probes before bringing
+up the proxy. The older TurboQuant launcher remains available only when an
+explicit non-default launcher is supplied.
 
 ### Options
 
 ```powershell
-# Skip Oracle (llama.cpp + LiteLLM only)
-.\scripts\windows\Start-Qwen36ZeroTierStack.ps1
+# Skip Oracle (llama.cpp + LiteLLM + Headroom only)
+.\scripts\windows\Start-WatsonStack.ps1
 
 # Custom model
-.\scripts\windows\Start-Qwen36ZeroTierStack.ps1 `
+.\scripts\windows\Start-WatsonStack.ps1 `
   -Model qwopus-3.6-27b `
   -ModelPath "D:\MODELS\Qwopus-VL-3.6-27B-Q3_K_M\Qwopus3.6-27B-v2-Q3_K_M.gguf"
 
 # Skip llama.cpp startup (already running)
-.\scripts\windows\Start-Qwen36ZeroTierStack.ps1 -SkipLlamaStart
+.\scripts\windows\Start-WatsonStack.ps1 -SkipLlamaStart
 ```
+
+### Codex CLI profile
+
+The ChatGPT-account desktop client cannot run arbitrary local model slugs. For
+local Watson work, use the Codex CLI profile below. The stack launcher starts the
+Responses compatibility bridge automatically; the installer registers the
+provider and profile in the user's Codex home without changing the default
+model:
+
+```powershell
+.\scripts\windows\Install-CodexQwen38WatsonProfile.ps1
+codex exec --profile qwen38-watson "Say hello"
+```
+
+The bridge preserves supported messages, tool calls, and reasoning items while
+discarding only Responses item types that the installed llama.cpp converter does
+not understand. It is a transport-compatibility layer, not a model or context
+compression layer. `qwen3.8` remains configured with the live 100,096-token
+context value.
+
+### Ollama fallback
+
+The repository includes an import recipe at
+`config/ollama/Qwen3.8.Modelfile`. Ollama 0.34.0 currently registers the GGUF
+but its runner reports `unknown model architecture: qwen35` when loading it, so
+the Qwen3.8 Ollama route is not usable until an Ollama release with Qwen3.8
+support is installed. The supported local-provider command is otherwise:
+
+```powershell
+codex --oss --local-provider ollama -m qwen3.8-watson "Say hello"
+```
+
+Do not treat a successful `ollama create` alone as proof of readiness; always
+run an actual `/api/chat` request and check the Ollama service log for runner
+load errors.
 
 ## Endpoints
 
@@ -99,6 +143,7 @@ This launches:
 |---------|-------|----------|
 | llama.cpp | `http://127.0.0.1:8080/v1` | — |
 | LiteLLM Proxy | `http://127.0.0.1:4000/v1` | `http://10.88.140.94:4000/v1` |
+| Codex Responses bridge | `http://127.0.0.1:4001/v1` | — |
 | webchat2api (Oracle) | `http://127.0.0.1:9000/v1` | — |
 
 ## GPT-5 Oracle (webchat2api)
@@ -163,16 +208,18 @@ To load a different model (e.g., for benchmarking):
 # Stop current server
 .\llama-cpp-server\scripts\stop_llama_server.ps1
 
-# Start with new model
-.\llama-cpp-server\scripts\start_turbo_hermes.ps1 `
-  -Profile hermes-qwen36-64k `
+# Start the canonical Watson stack with a custom model
+.\scripts\windows\Start-WatsonStack.ps1 `
+  -Model custom-model `
   -ModelPath "D:\MODELS\path\to\model.gguf"
 ```
 
-Or via the unified script:
+For the legacy Qwen3.6 TurboQuant/MTP experiments only, use the explicit
+compatibility wrapper and its matching profile:
+
 ```powershell
-.\scripts\windows\Start-Qwen36ZeroTierStack.ps1 `
-  -Model your-model-name `
+.\llama-cpp-server\scripts\start_turbo_hermes.ps1 `
+  -Profile hermes-qwen36-64k `
   -ModelPath "D:\MODELS\path\to\model.gguf"
 ```
 
@@ -182,7 +229,7 @@ Or via the unified script:
 
 | Script | Purpose |
 |--------|---------|
-| `Start-Qwen36ZeroTierStack.ps1` | Unified startup: llama.cpp + LiteLLM + Oracle |
+| `Start-WatsonStack.ps1` | Canonical generic startup: llama.cpp + LiteLLM + Headroom + optional Oracle |
 | `Start-Lucebox65kStack.ps1` | Lucebox/DFlash + proxy + LiteLLM, recommended 65k context profile |
 | `Start-Lucebox128kStack.ps1` | Lucebox/DFlash + proxy + LiteLLM, experimental 128k context profile |
 | `Start-LuceboxZeroTierStack.ps1` | Parameterized Lucebox/DFlash stack launcher |

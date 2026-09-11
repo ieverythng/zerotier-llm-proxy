@@ -1,0 +1,5 @@
+"case","passed","reason","elapsed_s","input_tokens","output_tokens","cached_tokens","gpu_free_before_mib","gpu_free_after_mib","output_preview"
+"exact_response","True","expected exact marker","0.665","2444","7","2400","328","328","HERMES_WORKFLOW_GATE_OK"
+"tool_json_selection","True","strict JSON tool=apply_patch","2.166","2792","24","2520","328","326","{""tool"":""apply_patch"",""reason"":""Editing a repo file requires applying a patch to modify the file contents.""}"
+"long_history_retention","True","sentinel/action retention","10.051","14842","16","2400","326","326","HERMES_GATE_SENTINEL_71429 choose_patch_file"
+"continuation_summary","True","continuation JSON","2.115","2785","15","2512","326","326","{""continue"":true,""next_gate"":""hermes_discord_workflow""}"

@@ -1,0 +1,13 @@
+"case","passed","reason","elapsed_s","input_tokens","output_tokens","cached_tokens","gpu_free_before_mib","gpu_free_after_mib","output_preview"
+"exact_response","True","expected exact marker","0.286","22","7","0","5569","5569","HERMES_WORKFLOW_GATE_OK"
+"tool_json_selection","True","strict JSON tool=apply_patch","0.654","68","36","0","5569","5569","{
+  ""tool"": ""apply_patch"",
+  ""reason"": ""The user explicitly requested that the tool must be apply_patch for a repo file edit.""
+}"
+"long_history_retention","True","sentinel/action retention","135.272","123424","16","0","5569","5558","HERMES_GATE_SENTINEL_71429 choose_patch_file"
+"continuation_summary","False","invalid JSON: Invalid JSON primitive: .","0.595","61","29","0","5558","5560","```json
+{
+  ""continue"": true,
+  ""next_gate"": ""hermes_discord_workflow""
+}
+```"

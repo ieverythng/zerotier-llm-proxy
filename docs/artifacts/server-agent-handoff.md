@@ -29,7 +29,7 @@ Client-facing contract:
 Current runtime mapping:
 
 - `zerotier-llm-proxy` starts the active Hermes launcher at `C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\start_turbo_hermes.ps1`.
-- That launcher stages binaries from `C:\Users\Admin\PROJECTS\llama-cpp-turboquant\build-cuda-faall\bin`, which is the turboquant llama.cpp build currently used by the stack.
+- Historical note: this handoff was captured before the runtime unification. Active launchers now use the verified shared CUDA 13.3 bundle at `C:\Users\Admin\PROJECTS\llama-b10621-win-cuda133`; TurboQuant remains an explicit opt-in only for legacy experiments.
 - The default Hermes profile is `hermes-qwen36-64k` with `-ContextSize 65536`, `q8_0` K cache, `turbo2` V cache, Flash Attention on, and `-np 1`.
 - Use `scripts/windows/Measure-Qwen36ProxyThroughput.ps1` after each context or KV-cache change to compare completion tok/s through the same LiteLLM `/v1/responses` path used by Codex.
 

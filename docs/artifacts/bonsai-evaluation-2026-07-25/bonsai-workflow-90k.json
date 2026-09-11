@@ -1,0 +1,65 @@
+﻿{
+    "base_url":  "http://127.0.0.1:8080/v1",
+    "headroom_health_url":  "http://127.0.0.1:8080/health",
+    "model":  "qwen36-turbo-hermes",
+    "long_context_tokens_target":  90000,
+    "all_passed":  false,
+    "case_count":  4,
+    "total_elapsed_s":  87.131,
+    "headroom_before":  {
+                            "status":  "ok"
+                        },
+    "headroom_after":  {
+                           "status":  "ok"
+                       },
+    "rows":  [
+                 {
+                     "case":  "exact_response",
+                     "passed":  true,
+                     "reason":  "expected exact marker",
+                     "elapsed_s":  0.276,
+                     "input_tokens":  22,
+                     "output_tokens":  7,
+                     "cached_tokens":  0,
+                     "gpu_free_before_mib":  1921,
+                     "gpu_free_after_mib":  1921,
+                     "output_preview":  "HERMES_WORKFLOW_GATE_OK"
+                 },
+                 {
+                     "case":  "tool_json_selection",
+                     "passed":  true,
+                     "reason":  "strict JSON tool=apply_patch",
+                     "elapsed_s":  0.644,
+                     "input_tokens":  68,
+                     "output_tokens":  36,
+                     "cached_tokens":  0,
+                     "gpu_free_before_mib":  1921,
+                     "gpu_free_after_mib":  1921,
+                     "output_preview":  "{\n  \"tool\": \"apply_patch\",\n  \"reason\": \"The user explicitly requested that the tool must be apply_patch for a repo file edit.\"\n}"
+                 },
+                 {
+                     "case":  "long_history_retention",
+                     "passed":  true,
+                     "reason":  "sentinel/action retention",
+                     "elapsed_s":  85.642,
+                     "input_tokens":  92566,
+                     "output_tokens":  16,
+                     "cached_tokens":  0,
+                     "gpu_free_before_mib":  1921,
+                     "gpu_free_after_mib":  1924,
+                     "output_preview":  "HERMES_GATE_SENTINEL_71429 choose_patch_file"
+                 },
+                 {
+                     "case":  "continuation_summary",
+                     "passed":  false,
+                     "reason":  "invalid JSON: Invalid JSON primitive: .",
+                     "elapsed_s":  0.569,
+                     "input_tokens":  61,
+                     "output_tokens":  29,
+                     "cached_tokens":  0,
+                     "gpu_free_before_mib":  1924,
+                     "gpu_free_after_mib":  1924,
+                     "output_preview":  "```json\n{\n  \"continue\": true,\n  \"next_gate\": \"hermes_discord_workflow\"\n}\n```"
+                 }
+             ]
+}

@@ -1,0 +1,269 @@
+﻿{
+    "base_url":  "http://127.0.0.1:4000/v1",
+    "headroom_health_url":  "http://127.0.0.1:8787/health",
+    "model":  "qwen36-turbo-hermes",
+    "long_context_tokens_target":  12000,
+    "all_passed":  true,
+    "case_count":  4,
+    "total_elapsed_s":  11.979,
+    "headroom_before":  {
+                            "service":  "headroom-proxy",
+                            "status":  "healthy",
+                            "ready":  true,
+                            "version":  "0.26.0",
+                            "timestamp":  "2026-07-29T14:12:49.784956Z",
+                            "uptime_seconds":  87.964,
+                            "checks":  {
+                                           "startup":  {
+                                                           "enabled":  true,
+                                                           "ready":  true,
+                                                           "status":  "healthy",
+                                                           "error":  null
+                                                       },
+                                           "http_client":  {
+                                                               "enabled":  true,
+                                                               "ready":  true,
+                                                               "status":  "healthy"
+                                                           },
+                                           "cache":  {
+                                                         "enabled":  true,
+                                                         "ready":  true,
+                                                         "status":  "healthy"
+                                                     },
+                                           "rate_limiter":  {
+                                                                "enabled":  true,
+                                                                "ready":  true,
+                                                                "status":  "healthy"
+                                                            },
+                                           "memory":  {
+                                                          "enabled":  true,
+                                                          "ready":  true,
+                                                          "status":  "healthy",
+                                                          "backend":  "local",
+                                                          "initialized":  true,
+                                                          "native_tool":  false,
+                                                          "bridge_enabled":  false
+                                                      },
+                                           "upstream":  {
+                                                            "enabled":  true,
+                                                            "ready":  true,
+                                                            "status":  "healthy",
+                                                            "url":  "https://api.anthropic.com",
+                                                            "error":  null
+                                                        }
+                                       },
+                            "runtime":  {
+                                            "anthropic_pre_upstream":  {
+                                                                           "enabled":  true,
+                                                                           "resolved_concurrency":  8,
+                                                                           "source":  "auto",
+                                                                           "acquire_timeout_seconds":  15.0,
+                                                                           "compression_timeout_seconds":  30.0,
+                                                                           "memory_context_timeout_seconds":  2.0,
+                                                                           "codex_ws_gated":  false
+                                                                       },
+                                            "compression_executor":  {
+                                                                         "max_workers":  32,
+                                                                         "queued":  0,
+                                                                         "queued_max":  1,
+                                                                         "queue_timeouts_total":  0,
+                                                                         "queue_wait_seconds_total":  0.0,
+                                                                         "queue_wait_seconds_max":  0.0,
+                                                                         "running":  0,
+                                                                         "in_flight":  0,
+                                                                         "in_flight_max":  1,
+                                                                         "run_seconds_total":  5.344000000000051,
+                                                                         "run_seconds_max":  5.04700000000048,
+                                                                         "leaked_threads_total":  0,
+                                                                         "source":  "auto"
+                                                                     },
+                                            "websocket_sessions":  {
+                                                                       "active_sessions":  0,
+                                                                       "active_relay_tasks":  0
+                                                                   }
+                                        },
+                            "rust_core":  "loaded",
+                            "config":  {
+                                           "backend":  "anthropic",
+                                           "optimize":  true,
+                                           "cache":  true,
+                                           "rate_limit":  true,
+                                           "disable_kompress":  false,
+                                           "memory":  true,
+                                           "learn":  false,
+                                           "code_graph":  false,
+                                           "anthropic_api_url":  null,
+                                           "openai_api_url":  "http://127.0.0.1:4000/v1",
+                                           "gemini_api_url":  null,
+                                           "cloudcode_api_url":  null,
+                                           "savings_profile":  null,
+                                           "target_ratio":  null,
+                                           "target_savings_percent":  null,
+                                           "compress_user_messages":  false,
+                                           "compress_system_messages":  false,
+                                           "protect_recent":  12,
+                                           "protect_analysis_context":  null,
+                                           "min_tokens_to_crush":  1000,
+                                           "max_items_after_crush":  50,
+                                           "smart_crusher_with_compaction":  null,
+                                           "force_kompress":  false,
+                                           "accuracy_guard":  null,
+                                           "pid":  15532
+                                       }
+                        },
+    "headroom_after":  {
+                           "service":  "headroom-proxy",
+                           "status":  "healthy",
+                           "ready":  true,
+                           "version":  "0.26.0",
+                           "timestamp":  "2026-07-29T14:13:02.814820Z",
+                           "uptime_seconds":  100.994,
+                           "checks":  {
+                                          "startup":  {
+                                                          "enabled":  true,
+                                                          "ready":  true,
+                                                          "status":  "healthy",
+                                                          "error":  null
+                                                      },
+                                          "http_client":  {
+                                                              "enabled":  true,
+                                                              "ready":  true,
+                                                              "status":  "healthy"
+                                                          },
+                                          "cache":  {
+                                                        "enabled":  true,
+                                                        "ready":  true,
+                                                        "status":  "healthy"
+                                                    },
+                                          "rate_limiter":  {
+                                                               "enabled":  true,
+                                                               "ready":  true,
+                                                               "status":  "healthy"
+                                                           },
+                                          "memory":  {
+                                                         "enabled":  true,
+                                                         "ready":  true,
+                                                         "status":  "healthy",
+                                                         "backend":  "local",
+                                                         "initialized":  true,
+                                                         "native_tool":  false,
+                                                         "bridge_enabled":  false
+                                                     },
+                                          "upstream":  {
+                                                           "enabled":  true,
+                                                           "ready":  true,
+                                                           "status":  "healthy",
+                                                           "url":  "https://api.anthropic.com",
+                                                           "error":  null
+                                                       }
+                                      },
+                           "runtime":  {
+                                           "anthropic_pre_upstream":  {
+                                                                          "enabled":  true,
+                                                                          "resolved_concurrency":  8,
+                                                                          "source":  "auto",
+                                                                          "acquire_timeout_seconds":  15.0,
+                                                                          "compression_timeout_seconds":  30.0,
+                                                                          "memory_context_timeout_seconds":  2.0,
+                                                                          "codex_ws_gated":  false
+                                                                      },
+                                           "compression_executor":  {
+                                                                        "max_workers":  32,
+                                                                        "queued":  0,
+                                                                        "queued_max":  1,
+                                                                        "queue_timeouts_total":  0,
+                                                                        "queue_wait_seconds_total":  0.0,
+                                                                        "queue_wait_seconds_max":  0.0,
+                                                                        "running":  0,
+                                                                        "in_flight":  0,
+                                                                        "in_flight_max":  1,
+                                                                        "run_seconds_total":  5.344000000000051,
+                                                                        "run_seconds_max":  5.04700000000048,
+                                                                        "leaked_threads_total":  0,
+                                                                        "source":  "auto"
+                                                                    },
+                                           "websocket_sessions":  {
+                                                                      "active_sessions":  0,
+                                                                      "active_relay_tasks":  0
+                                                                  }
+                                       },
+                           "rust_core":  "loaded",
+                           "config":  {
+                                          "backend":  "anthropic",
+                                          "optimize":  true,
+                                          "cache":  true,
+                                          "rate_limit":  true,
+                                          "disable_kompress":  false,
+                                          "memory":  true,
+                                          "learn":  false,
+                                          "code_graph":  false,
+                                          "anthropic_api_url":  null,
+                                          "openai_api_url":  "http://127.0.0.1:4000/v1",
+                                          "gemini_api_url":  null,
+                                          "cloudcode_api_url":  null,
+                                          "savings_profile":  null,
+                                          "target_ratio":  null,
+                                          "target_savings_percent":  null,
+                                          "compress_user_messages":  false,
+                                          "compress_system_messages":  false,
+                                          "protect_recent":  12,
+                                          "protect_analysis_context":  null,
+                                          "min_tokens_to_crush":  1000,
+                                          "max_items_after_crush":  50,
+                                          "smart_crusher_with_compaction":  null,
+                                          "force_kompress":  false,
+                                          "accuracy_guard":  null,
+                                          "pid":  15532
+                                      }
+                       },
+    "rows":  [
+                 {
+                     "case":  "exact_response",
+                     "passed":  true,
+                     "reason":  "expected exact marker",
+                     "elapsed_s":  1.044,
+                     "input_tokens":  22,
+                     "output_tokens":  7,
+                     "cached_tokens":  0,
+                     "gpu_free_before_mib":  843,
+                     "gpu_free_after_mib":  843,
+                     "output_preview":  "HERMES_WORKFLOW_GATE_OK"
+                 },
+                 {
+                     "case":  "tool_json_selection",
+                     "passed":  true,
+                     "reason":  "strict JSON tool=apply_patch",
+                     "elapsed_s":  1.07,
+                     "input_tokens":  68,
+                     "output_tokens":  41,
+                     "cached_tokens":  0,
+                     "gpu_free_before_mib":  843,
+                     "gpu_free_after_mib":  841,
+                     "output_preview":  "{\n  \"tool\": \"apply_patch\",\n  \"reason\": \"The task requires editing a repository file, which is best handled by applying a patch to modify the existing content.\"\n}"
+                 },
+                 {
+                     "case":  "long_history_retention",
+                     "passed":  true,
+                     "reason":  "sentinel/action retention",
+                     "elapsed_s":  8.801,
+                     "input_tokens":  12424,
+                     "output_tokens":  16,
+                     "cached_tokens":  0,
+                     "gpu_free_before_mib":  841,
+                     "gpu_free_after_mib":  858,
+                     "output_preview":  "HERMES_GATE_SENTINEL_71429 choose_patch_file"
+                 },
+                 {
+                     "case":  "continuation_summary",
+                     "passed":  true,
+                     "reason":  "continuation JSON",
+                     "elapsed_s":  1.064,
+                     "input_tokens":  61,
+                     "output_tokens":  24,
+                     "cached_tokens":  0,
+                     "gpu_free_before_mib":  858,
+                     "gpu_free_after_mib":  858,
+                     "output_preview":  "{\n  \"continue\": true,\n  \"next_gate\": \"hermes_discord_workflow\"\n}"
+                 }
+             ]
+}

@@ -19,20 +19,52 @@ if (-not (Test-Path -LiteralPath $headroomExe)) {
 }
 
 if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) {
-    Write-Host "Headroom already listens on port $Port" -ForegroundColor Yellow
-    exit 0
+    try {
+        $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 3
+        if ($health) {
+            Write-Host "Headroom already listens on port $Port" -ForegroundColor Yellow
+            exit 0
+        }
+    } catch {
+        Write-Warning "Headroom has an unhealthy listener on port $Port; attempting to replace it."
+    }
+
+    $owners = @(
+        Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique |
+            Where-Object { $_ -and $_ -ne 0 }
+    )
+    foreach ($owner in $owners) {
+        try { & taskkill.exe /PID ([int]$owner) /T /F *> $null } catch { }
+        Stop-Process -Id ([int]$owner) -Force -ErrorAction SilentlyContinue
+    }
+    for ($wait = 0; $wait -lt 20; $wait++) {
+        if (-not (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)) { break }
+        Start-Sleep -Milliseconds 250
+    }
+    if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) {
+        throw "Headroom port $Port is occupied by an unhealthy listener that could not be stopped."
+    }
 }
 
 New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
 $worker = @'
 Set-Location "__REPO_ROOT__"
 $env:HEADROOM_TELEMETRY = "off"
+$env:HEADROOM_ROLLOUT_CHANNEL = "canary"
+# v0.37 shares sticky tool definitions across Chat and Responses even though
+# their function schemas differ. Per-request injection preserves both formats
+# and keeps memory enabled without replaying the other API's schema.
+$env:HEADROOM_TOOL_INJECTION_STICKY = "disabled"
 $env:OPENAI_TARGET_API_URL = "__UPSTREAM__"
 $env:HEADROOM_EXCLUDE_TOOLS = "read_file,headroom_retrieve"
 $env:HEADROOM_MIN_TOKENS = "__MIN_TOKENS__"
 $env:HEADROOM_PROTECT_RECENT = "__PROTECT_RECENT__"
 $env:HEADROOM_FORCE_KOMPRESS = "__FORCE_KOMPRESS__"
-& "__HEADROOM_EXE__" proxy --host 0.0.0.0 --port __PORT__ --mode token --intercept-tool-results --no-subscription-tracking --no-telemetry --memory *> "__LOG_FILE__"
+# Hermes/Discord and local Codex share one intentional user-scoped memory store.
+# Explicit global mode also keeps Responses memory-save and memory-search on the
+# same backend while Headroom's per-project continuation seam is repaired upstream.
+& "__HEADROOM_EXE__" proxy --host 0.0.0.0 --port __PORT__ --mode token --intercept-tool-results --no-subscription-tracking --no-telemetry --memory --memory-storage global *> "__LOG_FILE__"
 '@
 $worker = $worker.Replace("__UPSTREAM__", $LiteLLMUpstream).
     Replace("__REPO_ROOT__", $repoRoot).

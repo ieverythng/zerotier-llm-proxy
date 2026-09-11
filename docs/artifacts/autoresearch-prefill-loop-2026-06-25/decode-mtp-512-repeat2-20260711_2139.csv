@@ -1,0 +1,8 @@
+"variant","status","streaming","ignore_eos","prompt_tokens_target","prompt_tokens_tokenized","prompt_chars","elapsed_s","response_headers_ms","first_token_ms","cache_n","prompt_n","prompt_ms","prompt_per_second","predicted_ms","predicted_per_second","draft_n","draft_n_accepted","draft_acceptance_pct","tokens_cached","tokens_evaluated","gpu_free_before_mib","gpu_free_min_mib","gpu_free_after_mib","gpu_max_utilization_pct","gpu_sample_count","gpu_sample_interval_ms","corpus_path","output_preview","error"
+"decode-mtp-512-repeat2","ok","True","True","512","511","2795","7.556","540.777","555.398","0","511","518.442","985.645","7008.035","73.059","395","312","78.987","1022","511","395","334","395","95","31","250","_tmp/bench/autoresearch-prefill-loop/fixed-corpus-512.txt","Return one compact sentence containing BEGIN_WATSON_FIXED_CORPUS and END_WATSUM_FIXED_CORPUS.
+
+<think>
+Here's a thinking process:
+
+1.  **Analyze User Input:**
+ ",""

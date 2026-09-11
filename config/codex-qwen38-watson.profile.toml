@@ -1,0 +1,5 @@
+# Repo-owned Codex CLI profile for the Watson stack.
+model = "qwen3.8"
+model_provider = "qwen38-watson"
+model_context_window = 100096
+model_max_output_tokens = 8192

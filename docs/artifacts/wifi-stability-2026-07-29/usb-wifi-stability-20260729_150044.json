@@ -1,0 +1,33 @@
+﻿{
+    "adapter_name":  "WiFi",
+    "interface_description":  "TP-Link Wireless USB Adapter",
+    "pnp_instance_id":  "USB\\VID_2357\u0026PID_0120\\00e04c000001",
+    "driver_version":  "1030.52.1216.2025",
+    "gateway":  "192.168.1.1",
+    "internet_target":  "1.1.1.1",
+    "started_at":  "2026-07-29T15:00:44.3570643+02:00",
+    "ended_at":  "2026-07-29T15:10:45.1622163+02:00",
+    "duration_s":  600.805,
+    "samples":  595,
+    "gateway_failures":  30,
+    "internet_failures":  39,
+    "missing_or_pnp_error_samples":  0,
+    "disconnected_samples":  0,
+    "gateway_latency_avg_ms":  7.936,
+    "gateway_latency_max_ms":  162,
+    "internet_latency_avg_ms":  23.437,
+    "internet_latency_max_ms":  439,
+    "download":  {
+                     "attempts":  22,
+                     "failures":  0,
+                     "bytes":  1073741824,
+                     "elapsed_s":  40.085,
+                     "average_mbps":  204.366,
+                     "PSComputerName":  "localhost",
+                     "RunspaceId":  "17943459-7be3-40b9-8827-7e9c7011c266",
+                     "PSShowComputerName":  false
+                 },
+    "new_rtwlanu_events":  0,
+    "new_wlan_connection_failures":  0,
+    "csv_path":  "docs\\artifacts\\wifi-stability-2026-07-29\\usb-wifi-stability-20260729_150044.csv"
+}

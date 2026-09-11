@@ -1,0 +1,319 @@
+{
+  "base_url": "http://127.0.0.1:8787/v1",
+  "headroom_health_url": "http://127.0.0.1:8787/health",
+  "model": "qwen36-turbo-hermes",
+  "long_context_tokens_target": 12000,
+  "all_passed": true,
+  "case_count": 4,
+  "total_elapsed_s": 12.415,
+  "headroom_before": {
+    "service": "headroom-proxy",
+    "status": "healthy",
+    "ready": true,
+    "version": "0.37.0",
+    "timestamp": "2026-09-01T14:43:18.915934Z",
+    "uptime_seconds": 318.647,
+    "checks": {
+      "startup": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy",
+        "error": null
+      },
+      "http_client": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy"
+      },
+      "cache": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy"
+      },
+      "rate_limiter": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy"
+      },
+      "memory": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy",
+        "backend": "local",
+        "initialized": true,
+        "native_tool": false,
+        "bridge_enabled": false
+      },
+      "upstream": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy",
+        "url": "https://api.anthropic.com",
+        "error": null
+      },
+      "kompress": {
+        "enabled": true,
+        "ready": false,
+        "status": "degraded",
+        "optional": true,
+        "backend": null
+      }
+    },
+    "runtime": {
+      "anthropic_pre_upstream": {
+        "enabled": true,
+        "resolved_concurrency": 8,
+        "source": "auto",
+        "acquire_timeout_seconds": 15.0,
+        "compression_timeout_seconds": 30.0,
+        "memory_context_timeout_seconds": 2.0,
+        "codex_ws_gated": false
+      },
+      "compression_executor": {
+        "max_workers": 16,
+        "queued": 0,
+        "queued_max": 1,
+        "queue_timeouts_total": 0,
+        "queue_wait_seconds_total": 0.0,
+        "queue_wait_seconds_max": 0.0,
+        "running": 0,
+        "in_flight": 0,
+        "in_flight_max": 1,
+        "run_seconds_total": 5.82799999974668,
+        "run_seconds_max": 5.530999999959022,
+        "leaked_threads_total": 0,
+        "quarantine_active": false,
+        "timed_out_workers": 0,
+        "timed_out_workers_max": 0,
+        "quarantine_activations_total": 0,
+        "quarantine_skips_total": 0,
+        "source": "auto"
+      },
+      "websocket_sessions": {
+        "active_sessions": 0,
+        "active_relay_tasks": 0
+      }
+    },
+    "rust_core": "loaded",
+    "config": {
+      "backend": "anthropic",
+      "optimize": true,
+      "cache": true,
+      "rate_limit": true,
+      "disable_kompress": false,
+      "disable_kompress_fallback": false,
+      "disable_kompress_anthropic": null,
+      "disable_kompress_openai": null,
+      "memory": true,
+      "learn": false,
+      "code_graph": false,
+      "anthropic_api_url": null,
+      "openai_api_url": "http://127.0.0.1:4000/v1",
+      "gemini_api_url": null,
+      "cloudcode_api_url": null,
+      "vertex_api_url": null,
+      "savings_profile": "coding",
+      "target_ratio": null,
+      "target_savings_percent": null,
+      "compress_user_messages": true,
+      "compress_system_messages": false,
+      "protect_recent": 0,
+      "protect_analysis_context": true,
+      "min_tokens_to_crush": 1000,
+      "max_items_after_crush": 15,
+      "smart_crusher_with_compaction": true,
+      "force_kompress": false,
+      "accuracy_guard": null,
+      "runtime_env": {
+        "HEADROOM_OUTPUT_SHAPER": null,
+        "HEADROOM_VERBOSITY_LEVEL": null,
+        "HEADROOM_EFFORT_ROUTER": "0",
+        "HEADROOM_MECHANICAL_EFFORT": null,
+        "HEADROOM_VERBOSITY_AUTOTUNE": null,
+        "HEADROOM_OUTPUT_HOLDOUT": null,
+        "HEADROOM_INTERCEPT_READ_MIN_CHARS": null
+      },
+      "pid": 22884
+    }
+  },
+  "headroom_after": {
+    "service": "headroom-proxy",
+    "status": "healthy",
+    "ready": true,
+    "version": "0.37.0",
+    "timestamp": "2026-09-01T14:43:31.821109Z",
+    "uptime_seconds": 331.552,
+    "checks": {
+      "startup": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy",
+        "error": null
+      },
+      "http_client": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy"
+      },
+      "cache": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy"
+      },
+      "rate_limiter": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy"
+      },
+      "memory": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy",
+        "backend": "local",
+        "initialized": true,
+        "native_tool": false,
+        "bridge_enabled": false
+      },
+      "upstream": {
+        "enabled": true,
+        "ready": true,
+        "status": "healthy",
+        "url": "https://api.anthropic.com",
+        "error": null
+      },
+      "kompress": {
+        "enabled": true,
+        "ready": false,
+        "status": "degraded",
+        "optional": true,
+        "backend": null
+      }
+    },
+    "runtime": {
+      "anthropic_pre_upstream": {
+        "enabled": true,
+        "resolved_concurrency": 8,
+        "source": "auto",
+        "acquire_timeout_seconds": 15.0,
+        "compression_timeout_seconds": 30.0,
+        "memory_context_timeout_seconds": 2.0,
+        "codex_ws_gated": false
+      },
+      "compression_executor": {
+        "max_workers": 16,
+        "queued": 0,
+        "queued_max": 1,
+        "queue_timeouts_total": 0,
+        "queue_wait_seconds_total": 0.0,
+        "queue_wait_seconds_max": 0.0,
+        "running": 0,
+        "in_flight": 0,
+        "in_flight_max": 1,
+        "run_seconds_total": 5.859999999636784,
+        "run_seconds_max": 5.530999999959022,
+        "leaked_threads_total": 0,
+        "quarantine_active": false,
+        "timed_out_workers": 0,
+        "timed_out_workers_max": 0,
+        "quarantine_activations_total": 0,
+        "quarantine_skips_total": 0,
+        "source": "auto"
+      },
+      "websocket_sessions": {
+        "active_sessions": 0,
+        "active_relay_tasks": 0
+      }
+    },
+    "rust_core": "loaded",
+    "config": {
+      "backend": "anthropic",
+      "optimize": true,
+      "cache": true,
+      "rate_limit": true,
+      "disable_kompress": false,
+      "disable_kompress_fallback": false,
+      "disable_kompress_anthropic": null,
+      "disable_kompress_openai": null,
+      "memory": true,
+      "learn": false,
+      "code_graph": false,
+      "anthropic_api_url": null,
+      "openai_api_url": "http://127.0.0.1:4000/v1",
+      "gemini_api_url": null,
+      "cloudcode_api_url": null,
+      "vertex_api_url": null,
+      "savings_profile": "coding",
+      "target_ratio": null,
+      "target_savings_percent": null,
+      "compress_user_messages": true,
+      "compress_system_messages": false,
+      "protect_recent": 0,
+      "protect_analysis_context": true,
+      "min_tokens_to_crush": 1000,
+      "max_items_after_crush": 15,
+      "smart_crusher_with_compaction": true,
+      "force_kompress": false,
+      "accuracy_guard": null,
+      "runtime_env": {
+        "HEADROOM_OUTPUT_SHAPER": null,
+        "HEADROOM_VERBOSITY_LEVEL": null,
+        "HEADROOM_EFFORT_ROUTER": "0",
+        "HEADROOM_MECHANICAL_EFFORT": null,
+        "HEADROOM_VERBOSITY_AUTOTUNE": null,
+        "HEADROOM_OUTPUT_HOLDOUT": null,
+        "HEADROOM_INTERCEPT_READ_MIN_CHARS": null
+      },
+      "pid": 22884
+    }
+  },
+  "rows": [
+    {
+      "case": "exact_response",
+      "passed": true,
+      "reason": "expected exact marker",
+      "elapsed_s": 0.487,
+      "input_tokens": 2444,
+      "output_tokens": 7,
+      "cached_tokens": 2422,
+      "gpu_free_before_mib": 705,
+      "gpu_free_after_mib": 705,
+      "output_preview": "HERMES_WORKFLOW_GATE_OK"
+    },
+    {
+      "case": "tool_json_selection",
+      "passed": true,
+      "reason": "strict JSON tool=apply_patch",
+      "elapsed_s": 1.858,
+      "input_tokens": 2792,
+      "output_tokens": 24,
+      "cached_tokens": 2520,
+      "gpu_free_before_mib": 705,
+      "gpu_free_after_mib": 705,
+      "output_preview": "{\"tool\":\"apply_patch\",\"reason\":\"Editing a repo file requires applying a patch to modify the file contents.\"}"
+    },
+    {
+      "case": "long_history_retention",
+      "passed": true,
+      "reason": "sentinel/action retention",
+      "elapsed_s": 8.4,
+      "input_tokens": 14842,
+      "output_tokens": 16,
+      "cached_tokens": 2184,
+      "gpu_free_before_mib": 705,
+      "gpu_free_after_mib": 719,
+      "output_preview": "HERMES_GATE_SENTINEL_71429 choose_patch_file"
+    },
+    {
+      "case": "continuation_summary",
+      "passed": true,
+      "reason": "continuation JSON",
+      "elapsed_s": 1.67,
+      "input_tokens": 2785,
+      "output_tokens": 15,
+      "cached_tokens": 2512,
+      "gpu_free_before_mib": 719,
+      "gpu_free_after_mib": 719,
+      "output_preview": "{\"continue\":true,\"next_gate\":\"hermes_discord_workflow\"}"
+    }
+  ]
+}

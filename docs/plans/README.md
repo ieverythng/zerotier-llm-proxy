@@ -1,5 +1,7 @@
 # Plans
 
+- [Watson autoresearch cycle, 2026-07-11](watson-autoresearch-cycle-2026-07-11.md)
+
 Planning documents live here, following the same convention used by the NAO repo:
 
 - architecture and operating model proposals go in docs/architecture/;

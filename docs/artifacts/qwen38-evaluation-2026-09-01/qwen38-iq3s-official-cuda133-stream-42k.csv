@@ -1,0 +1,4 @@
+"variant","status","streaming","ignore_eos","prompt_tokens_target","prompt_tokens_tokenized","prompt_chars","elapsed_s","response_headers_ms","first_token_ms","cache_n","prompt_n","prompt_ms","prompt_per_second","predicted_ms","predicted_per_second","draft_n","draft_n_accepted","draft_acceptance_pct","tokens_cached","tokens_evaluated","gpu_free_before_mib","gpu_free_min_mib","gpu_free_after_mib","gpu_max_utilization_pct","gpu_sample_count","gpu_sample_interval_ms","corpus_path","output_preview","error"
+"qwen38-iq3s-official-cuda133-stream-42k","ok","True","False","42000","41382","233877","33.203","267.025","32391.934","0","41382","32131.018","1287.914","775.929","39.952","","","","41413","41382","2016","1951","2001","99","128","250","","
+
+BEGIN_WATSON_FIXED_CORPUS The Watson fixed corpus prefill measurement uses a deterministic tokenized prompt to ensure baseline and challenger runs compare the",""

@@ -106,14 +106,14 @@
 <p>Hermes Agent connects to the Qwen3.6 model running on Windows GPU via the Hermes Gateway → llama.cpp bridge. This is the default front model for all agent operations.</p>
 <pre>curl http://172.24.16.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"qwen36-turbo-hermes","messages":[{"role":"user","content":"Hello"}]}'</pre>
+  -d '{"model":"qwen3.8","messages":[{"role":"user","content":"Hello"}]}'</pre>
 
 <h3>2. ZeroTier Remote Access</h3>
 <p>Remote machines on the ZeroTier network can reach the LiteLLM proxy at <code>10.88.140.94:4000</code>, getting full OpenAI-compatible access to the local model without exposing ports publicly.</p>
 <pre>curl http://10.88.140.94:4000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer &lt;llama-api-key&gt;" \
-  -d '{"model":"qwen36-turbo-hermes","messages":[{"role":"user","content":"Hello"}]}'</pre>
+  -d '{"model":"qwen3.8","messages":[{"role":"user","content":"Hello"}]}'</pre>
 
 <h3>3. GPT-5 Oracle (Expert Consultation)</h3>
 <p>For complex reasoning tasks, the Hermes Agent can query GPT-5 models via webchat2api proxy. Used for architecture decisions, security assessments, and verification of technical claims.</p>
@@ -160,13 +160,13 @@
 <pre># Stop current server
 powershell -File C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\stop_llama_server.ps1
 
-# Start with new model
-powershell -File C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\start_turbo_hermes.ps1 `
-  -Profile hermes-qwen36-64k `
+# Start the canonical Watson stack with a custom model
+powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-WatsonStack.ps1 `
+  -Model qwopus-3.6-27b `
   -ModelPath "D:\MODELS\Qwopus-VL-3.6-27B-Q3_K_M\Qwopus3.6-27B-v2-Q3_K_M.gguf"</pre>
 
-<p>Or use the unified startup script with a custom model:</p>
-<pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-Qwen36ZeroTierStack.ps1 `
+<p>The same canonical launcher accepts custom model paths:</p>
+<pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-WatsonStack.ps1 `
   -Model qwopus-3.6-27b `
   -ModelPath "D:\MODELS\Qwopus-VL-3.6-27B-Q3_K_M\Qwopus3.6-27B-v2-Q3_K_M.gguf"</pre>
 
@@ -174,10 +174,10 @@ powershell -File C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\start_turbo_he
 <h2>Startup Commands</h2>
 
 <h3>Full Stack (One Command)</h3>
-<pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-Qwen36ZeroTierStack.ps1</pre>
+<pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-WatsonStack.ps1</pre>
 
 <h3>Without Oracle</h3>
-<pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-Qwen36ZeroTierStack.ps1 -NoOracle</pre>
+<pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-WatsonStack.ps1 -NoOracle</pre>
 
 <h3>Token Refresh (when Oracle fails)</h3>
 <pre>powershell -File C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Refresh-ChatGPTToken.ps1 -RestartProxy</pre>
@@ -201,7 +201,7 @@ powershell -File C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\start_turbo_he
 ├── config/server/litellm-config.yaml    # LiteLLM backend config
 ├── docs/architecture/zerotier-llm-proxy-architecture.html  # This file
 ├── scripts/windows/
-│   ├── Start-Qwen36ZeroTierStack.ps1   # Unified startup (llama.cpp + LiteLLM + Oracle)
+│   ├── Start-WatsonStack.ps1           # Unified startup (llama.cpp + LiteLLM + Headroom)
 │   ├── Start-Qwen36LiteLLM.ps1         # LiteLLM proxy launcher
 │   ├── Refresh-ChatGPTToken.ps1        # Auto token extraction & update
 │   └── ...                              # Benchmarking, testing scripts
@@ -210,8 +210,8 @@ powershell -File C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\start_turbo_he
 llama-cpp-server/                        # Separate repo
 ├── profiles/llama-profiles.json         # Model profiles
 ├── scripts/
-│   ├── start_turbo_hermes.ps1          # llama.cpp launcher
-│   ├── start_profile.ps1               # Profile-based launcher
+│   ├── start_turbo_hermes.ps1          # Legacy TurboQuant/MTP compatibility launcher
+│   ├── start_profile.ps1               # Canonical profile-based launcher
 │   └── stop_llama_server.ps1           # Server shutdown
 
 webchat2api/                             # WSL side

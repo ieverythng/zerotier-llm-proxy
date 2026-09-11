@@ -1,0 +1,53 @@
+{
+  "models": [
+    {
+      "name": "qwen36-turbo-hermes",
+      "model": "qwen36-turbo-hermes",
+      "modified_at": "",
+      "size": "",
+      "digest": "",
+      "type": "model",
+      "description": "",
+      "tags": [
+        ""
+      ],
+      "capabilities": [
+        "completion"
+      ],
+      "parameters": "",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "",
+        "families": [
+          ""
+        ],
+        "parameter_size": "",
+        "quantization_level": ""
+      }
+    }
+  ],
+  "object": "list",
+  "data": [
+    {
+      "id": "qwen36-turbo-hermes",
+      "aliases": [
+        "qwen36-turbo-hermes"
+      ],
+      "tags": [],
+      "object": "model",
+      "created": 1788270646,
+      "owned_by": "llamacpp",
+      "meta": {
+        "vocab_type": true,
+        "n_vocab": 248320,
+        "n_ctx": 100096,
+        "n_ctx_train": 262144,
+        "n_embd": 5120,
+        "n_params": 27320697856,
+        "size": 13135396864,
+        "ftype": "Q3_K - Large"
+      }
+    }
+  ]
+}

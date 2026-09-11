@@ -1,0 +1,20 @@
+"case","passed","reason","elapsed_s","input_tokens","output_tokens","cached_tokens","gpu_free_before_mib","gpu_free_after_mib","output_preview"
+"exact_response","False","expected exact marker","0.696","20","32","0","1913","1913","Here's a thinking process:
+
+1.  **Analyze User Input:**
+   - User says: ""Reply with exactly: HERMES_WORKFLOW_GATE"
+"tool_json_selection","False","invalid JSON: Invalid JSON primitive: Here.","1.392","66","96","0","1913","1913","Here's a thinking process:
+
+1.  **Analyze User Input:**
+   - **Task:** Validate Hermes tool selection for a repo file edit.
+   - **Allowed Tools:** `read_file`, `apply_patch`, `shell`
+   - **Constraint 1:** Return *only*"
+"long_history_retention","True","sentinel/action retention","8.233","12422","96","0","1913","1921","Here's a thinking process:
+
+1.  **Analyze User Input:**
+   - The user provides a long block of text starting with `BEGIN_DISCORD_HISTORY_GATE` and ending with `END_DISCORD_HISTORY_GATE`.
+   - The text contains repeated l"
+"continuation_summary","False","invalid JSON: Invalid JSON primitive: Here.","1.828","59","128","0","1921","1921","Here's a thinking process:
+
+1.  **Analyze User Input:**
+   - **Input:** ""Prior agent state: benchmark repeated, route gate passed, next gate is Hermes Discord workflow. Return JSON with continue=true and next_gate='herme"

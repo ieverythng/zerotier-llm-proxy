@@ -1,7 +1,7 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:4000/v1",
     [string]$ApiKey = "local-qwen36",
-    [string]$Model = "qwen36-turbo-hermes"
+    [string]$Model = "qwen3.8"
 )
 
 $ErrorActionPreference = "Stop"

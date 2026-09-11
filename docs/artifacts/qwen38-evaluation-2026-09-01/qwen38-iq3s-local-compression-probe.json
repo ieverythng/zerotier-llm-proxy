@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-09-01T14:40:31.5632672Z",
+  "route": "litellm-direct",
+  "endpoint": "http://127.0.0.1:4000/v1/responses",
+  "model": "qwen36-turbo-hermes",
+  "status": "completed",
+  "usage": {
+    "input_tokens": 133,
+    "input_tokens_details": {
+      "audio_tokens": null,
+      "cached_tokens": 0,
+      "text_tokens": null
+    },
+    "output_tokens": 118,
+    "output_tokens_details": null,
+    "total_tokens": 251,
+    "cost": null
+  },
+  "valid_json": true,
+  "content": "{\"decisions\":[\"Selected Qwen3.8 IQ3_S at 100096 context\",\"Configured stack ports: llama 8080, LiteLLM 4000, Headroom 8787\"],\"constraints\":[\"Q3_K_XL failed at 100k prefill\",\"Codex compaction threshold is not locally exposed\"],\"next_steps\":[\"Run codex login if auth fails\",\"Provide save/search proof for Headroom memory\"],\"unknowns\":[\"Current status of Codex authentication\",\"Verification status of Headroom memory persistence\"]}"
+}

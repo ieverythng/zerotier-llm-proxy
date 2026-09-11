@@ -1,6 +1,9 @@
 # Session Ledger Workflow
 
-The server can run `qwen36-turbo-hermes` at 65k, 96k, and 128k contexts, but long prompts are expensive. For Hermes/Discord work, keep durable session state outside the model request and inject a compact ledger after compaction.
+The canonical server runs `qwen3.8` at a rounded 100,096-token allocation.
+Legacy Qwen3.6 TurboQuant profiles remain available for controlled experiments,
+but long prompts are expensive. For Hermes/Discord work, keep durable session
+state outside the model request and inject a compact ledger after compaction.
 
 ## When To Use It
 
@@ -15,9 +18,9 @@ Create or update the default local ledger at `_tmp/session-ledger.md`:
 
 ```powershell
 .\scripts\windows\Update-QwenSessionLedger.ps1 `
-  -ActiveGoal "Optimize qwen36 Hermes/Discord endpoint for 65k+ context with measured throughput." `
-  -StableFact "Active llama launcher is C:\Users\Admin\PROJECTS\llama-cpp-server\scripts\start_turbo_hermes.ps1." `
-  -Constraint "Default production context is 65536; 98304 and 131072 are special modes." `
+  -ActiveGoal "Optimize qwen3.8 Hermes/Discord endpoint for 100k context with measured throughput." `
+  -StableFact "Active llama launcher is C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-WatsonStack.ps1." `
+  -Constraint "Default production context is 100096; legacy 65536 TurboQuant profiles are special modes." `
   -Measurement "2026-06-05: 98304 synthetic context through LiteLLM took about 152.53s for a short answer." `
   -PrintPromptBlock
 ```
@@ -46,4 +49,3 @@ Use `-PrintPromptBlock` when handing state to a new compacted session. Paste onl
 3. Keep normal traffic on `65536`.
 4. Use `98304` or `131072` only for targeted recovery, audit, or stress tests.
 5. After compaction, paste the ledger summary and continue from the next step.
-

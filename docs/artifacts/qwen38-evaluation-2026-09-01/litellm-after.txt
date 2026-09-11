@@ -1,0 +1,10 @@
+Name: litellm
+Version: 1.99.0
+Summary: Library to easily interface with LLM API providers
+Home-page: 
+Author: BerriAI
+Author-email: 
+License: 
+Location: C:\Users\Admin\itrader\Lib\site-packages
+Requires: aiohttp, boto3, click, fastuuid, httpx, importlib-metadata, jinja2, jsonschema, openai, pydantic, pydantic-settings, python-dotenv, tiktoken, tokenizers
+Required-by: 

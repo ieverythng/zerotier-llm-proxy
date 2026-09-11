@@ -1,0 +1,2 @@
+"variant","status","prompt_tokens_target","prompt_tokens_tokenized","prompt_chars","elapsed_s","cache_n","prompt_n","prompt_ms","prompt_per_second","predicted_ms","predicted_per_second","tokens_cached","tokens_evaluated","gpu_free_before_mib","gpu_free_after_mib","corpus_path","output_preview","error"
+"challenger-b1024-ub1024-42k","ok","42000","41383","233879","31.683","0","41383","31369.661","1319.205","219.781","36.4","41390","41383","313","105","_tmp\bench\autoresearch-prefill-loop\fixed-corpus-42k.txt","Return one compact sentence containing BEGIN_WAT",""

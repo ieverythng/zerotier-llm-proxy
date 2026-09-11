@@ -1,0 +1,56 @@
+﻿{
+    "variant":  "bonsai-thinking-disabled",
+    "base_url":  "http://127.0.0.1:8080/v1",
+    "model":  "qwen36-turbo-hermes",
+    "generated_at":  "2026-07-29T15:26:15.9829246+02:00",
+    "passed":  4,
+    "total":  5,
+    "total_elapsed_s":  8.02,
+    "rows":  [
+                 {
+                     "case":  "context_explanation",
+                     "passed":  true,
+                     "reason":  "words=50 runtime=True kv=True",
+                     "elapsed_s":  1.342,
+                     "word_count":  50,
+                     "output":  "A model trained on 262k tokens learns long-range dependencies but doesn’t require that context at inference. Serving with 65,536 tokens reduces KV-cache memory usage significantly, lowering runtime allocation and latency. The tradeoff is accepting shorter context for faster, more efficient serving, while still benefiting from the model’s broader training exposure.",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "code_diagnosis_json",
+                     "passed":  true,
+                     "reason":  "strict JSON and corrected bound=True",
+                     "elapsed_s":  1.435,
+                     "word_count":  51,
+                     "output":  "{\n  \"bug\": \"The loop condition `i \u003c= items.length` causes an out-of-bounds access on the last iteration, as array indices are zero-based and the valid range is `0` to `items.length - 1`.\",\n  \"fix\": \"Change the loop condition to `i \u003c items.length` to ensure the loop only iterates over valid array indices.\"\n}",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "constraint_plan_json",
+                     "passed":  true,
+                     "reason":  "order=A,B,C,D",
+                     "elapsed_s":  0.399,
+                     "word_count":  1,
+                     "output":  "{\"order\":[\"A\",\"B\",\"C\",\"D\"]}",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "uncertainty_restraint",
+                     "passed":  true,
+                     "reason":  "admits_unknown=True requests_evidence=True",
+                     "elapsed_s":  2.527,
+                     "word_count":  107,
+                     "output":  "I cannot provide the exact commit hash or list of changed files for the Universal Agentic Harness in the private Nao repository, as I do not have access to that repository’s history or its private codebase.\n\nTo obtain this information, you would need to:\n\n1. **Access the repository directly** — via Git (e.g., `git log`, `git show \u003ccommit\u003e`, or `git diff`) or a Git hosting platform (e.g., GitHub, GitLab, Bitbucket) if it’s mirrored or shared.\n2. **Search for relevant commits** — using keywords like “Universal Agentic Harness,” “harness,” “agentic,” or related project names in the commit messages or file diffs.\n3. **Check documentation or internal wikis** —",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "discord_response_style",
+                     "passed":  false,
+                     "reason":  "words=79 bullets=3 prefill=False measurements=True",
+                     "elapsed_s":  2.317,
+                     "word_count":  79,
+                     "output":  "- **Bottleneck:** 100k tokens × 4 bytes (FP16) ≈ 400 MB KV cache per layer. With ~30 layers, that’s ~12 GB just for context, leaving almost no headroom for model weights or activation memory. You’re likely OOM-ing or thrashing.\n- **Measure 1:** Check `nvidia-smi` for VRAM utilization and swap activity. If usage hits 95%+ or shows high swap, you’re memory-bound.\n- **Measure 2:** Profile with `torch.cuda.memory_summary()` or `vram_monitor` to see if KV cache or activations are spilling to CPU.",
+                     "error":  ""
+                 }
+             ]
+}

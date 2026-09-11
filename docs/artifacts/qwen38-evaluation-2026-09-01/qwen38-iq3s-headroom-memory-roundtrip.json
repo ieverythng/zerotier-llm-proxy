@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-09-01T14:39:57.3462829Z",
+  "fact": "DISPOSABLE_HEADROOM_ROUNDTRIP_20260901163949414",
+  "headers": {
+    "x-headroom-user-id": "juanbeck",
+    "x-headroom-project-id": "watson-global"
+  },
+  "db": ".headroom/memory.db",
+  "count_before": 5,
+  "save_status": "completed",
+  "save_text": "Saved. The fact `DISPOSABLE_HEADROOM_ROUNDTRIP_20260901163949414` is now stored with memory ID `a53ea423-79df-4f15-a54b-747a09c8784f`.",
+  "save_memory_id": "a53ea423-79df-4f15-a54b-747a09c8784f",
+  "count_after_save": 6,
+  "search_status": "completed",
+  "search_text": "FOUND",
+  "search_found": true,
+  "cleanup": "Success: Deleted 1 memory(ies).",
+  "count_after_cleanup": 5
+}

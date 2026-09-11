@@ -4,7 +4,9 @@ param(
     [string]$ListenHost = "0.0.0.0",
     [int]$ListenPort = 4000,
     [string]$BackendKey = "local-qwen36",
-    [string]$UpstreamModel = "qwen36-turbo-hermes",
+    [string]$UpstreamModel = "qwen3.8",
+    [ValidatePattern('^[A-Za-z0-9._-]+$')]
+    [string]$ModelName = "qwen3.8",
     [switch]$UseStaticConfig
 )
 
@@ -37,6 +39,11 @@ if ($UseStaticConfig) {
     $runtimeConfig = Join-Path $runtimeDir "llama-cpp-active.yaml"
     @"
 model_list:
+  - model_name: $ModelName
+    litellm_params:
+      model: openai/$UpstreamModel
+      api_base: $LlamaCppBaseUrl
+      api_key: os.environ/LLAMA_CPP_API_KEY
   - model_name: qwen36-turbo-hermes
     litellm_params:
       model: openai/$UpstreamModel

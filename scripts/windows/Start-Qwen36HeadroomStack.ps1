@@ -9,7 +9,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$stack = Join-Path $scriptDir "Start-Qwen36ZeroTierStack.ps1"
+$stack = Join-Path $scriptDir "Start-WatsonStack.ps1"
 
 $params = @{}
 if ($EnableOracle) { $params.EnableOracle = $true }

@@ -1,0 +1,56 @@
+﻿{
+    "variant":  "qwen38-iq3s",
+    "base_url":  "http://127.0.0.1:8080/v1",
+    "model":  "qwen36-turbo-hermes",
+    "generated_at":  "2026-09-01T13:45:54.2870148+02:00",
+    "passed":  0,
+    "total":  5,
+    "total_elapsed_s":  27.435,
+    "rows":  [
+                 {
+                     "case":  "context_explanation",
+                     "passed":  false,
+                     "reason":  "request or validator failed",
+                     "elapsed_s":  6.158,
+                     "word_count":  0,
+                     "output":  "",
+                     "error":  "The remote server returned an error: (500) Internal Server Error."
+                 },
+                 {
+                     "case":  "code_diagnosis_json",
+                     "passed":  false,
+                     "reason":  "request or validator failed",
+                     "elapsed_s":  4.8,
+                     "word_count":  0,
+                     "output":  "",
+                     "error":  "The remote server returned an error: (500) Internal Server Error."
+                 },
+                 {
+                     "case":  "constraint_plan_json",
+                     "passed":  false,
+                     "reason":  "request or validator failed",
+                     "elapsed_s":  3.707,
+                     "word_count":  0,
+                     "output":  "",
+                     "error":  "The remote server returned an error: (500) Internal Server Error."
+                 },
+                 {
+                     "case":  "uncertainty_restraint",
+                     "passed":  false,
+                     "reason":  "request or validator failed",
+                     "elapsed_s":  5.989,
+                     "word_count":  0,
+                     "output":  "",
+                     "error":  "The remote server returned an error: (500) Internal Server Error."
+                 },
+                 {
+                     "case":  "discord_response_style",
+                     "passed":  false,
+                     "reason":  "request or validator failed",
+                     "elapsed_s":  6.781,
+                     "word_count":  0,
+                     "output":  "",
+                     "error":  "The remote server returned an error: (500) Internal Server Error."
+                 }
+             ]
+}

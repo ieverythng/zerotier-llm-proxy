@@ -1,0 +1,6 @@
+# Repo-owned Codex CLI profile template. Providers must be installed in the
+# user-level config; run Install-CodexQwen38WatsonProfile.ps1 to do both.
+model = "qwen3.8"
+model_provider = "qwen38-watson"
+model_context_window = 100096
+model_max_output_tokens = 8192

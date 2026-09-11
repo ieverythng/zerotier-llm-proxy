@@ -1,0 +1,21 @@
+Name: headroom-ai
+Version: 0.26.0
+Summary: The Context Optimization Layer for LLM Applications - Cut costs by 50-90%
+Home-page: https://headroom-docs.vercel.app
+Author: Headroom Contributors
+Author-email: 
+License-Expression: Apache-2.0
+Location: C:\Users\Admin\PROJECTS\zerotier-llm-proxy\.runtime\headroom\.venv\Lib\site-packages
+Requires: ast-grep-cli, click, litellm, opentelemetry-api, pydantic, rich, tiktoken
+Required-by: 
+---
+Name: litellm
+Version: 1.89.2
+Summary: Library to easily interface with LLM API providers
+Home-page: https://litellm.ai
+Author: BerriAI
+Author-email: 
+License-Expression: MIT
+Location: C:\Users\Admin\PROJECTS\zerotier-llm-proxy\.runtime\headroom\.venv\Lib\site-packages
+Requires: aiohttp, click, fastuuid, httpx, importlib-metadata, jinja2, jsonschema, openai, pydantic, python-dotenv, tiktoken, tokenizers
+Required-by: headroom-ai

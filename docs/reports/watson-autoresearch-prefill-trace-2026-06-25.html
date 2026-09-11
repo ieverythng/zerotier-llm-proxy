@@ -11,12 +11,12 @@
     h1 { font-size:clamp(34px,5vw,60px); line-height:1.02; letter-spacing:-.045em; margin:12px 0; }
     h2 { margin-top:34px; }
     .lead { color:#c4d2e8; font-size:18px; max-width:900px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin:20px 0; }
+    .gridcards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin:20px 0; }
     .card { background:linear-gradient(180deg,var(--panel),#0d1421); border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:0 14px 40px #0005; }
     .kpi { font-size:32px; font-weight:850; letter-spacing:-.04em; }
     .muted { color:var(--muted); }
     svg { width:100%; height:auto; background:#0b1220; border:1px solid var(--line); border-radius:18px; }
-    .gridline, .grid { stroke:#213049; stroke-width:1; }
+    .grid { stroke:#213049; stroke-width:1; }
     .axis { stroke:#51647f; stroke-width:1.5; }
     .raw { fill:none; stroke:#75e6ff88; stroke-width:2; }
     .best { fill:none; stroke:#6ee7b7; stroke-width:3; }
@@ -24,41 +24,97 @@
     circle.keep { fill:var(--ok); }
     circle.repeat { fill:var(--warn); }
     circle.discard { fill:var(--muted); }
-    circle.crash { fill:var(--bad); }
     text { fill:#cfe3ff; font-size:12px; }
     table { width:100%; border-collapse:collapse; background:#0c1320; border:1px solid var(--line); border-radius:14px; overflow:hidden; }
-    th,td { border-bottom:1px solid var(--line); padding:10px 12px; text-align:left; }
+    th,td { border-bottom:1px solid var(--line); padding:10px 12px; text-align:left; vertical-align:top; }
     th { color:#b8d7ff; background:#121e31; text-transform:uppercase; font-size:12px; }
     code { color:#d9ecff; }
     .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:7px; }
-    .dot.keep { background:var(--ok); } .dot.repeat { background:var(--warn); } .dot.discard { background:var(--muted); } .dot.crash { background:var(--bad); }
+    .dot.keep { background:var(--ok); } .dot.repeat { background:var(--warn); } .dot.discard { background:var(--muted); }
   </style>
 </head>
 <body>
 <main>
   <h1>Watson Autoresearch Prefill Trace — 2026-06-25</h1>
-  <p class="lead">Karpathy-style optimization trace for 61k cold direct prefill throughput. Higher prompt_per_second is better; each point is one tested launcher/runtime modification.</p>
-  <div class="grid">
+  <p class="lead"></p>
+  <div class="gridcards">
     <div class="card"><div class="muted">Optimized metric</div><div class="kpi">prompt_per_second</div><div class="muted">higher is better</div></div>
-    <div class="card"><div class="muted">Best observed</div><div class="kpi">1340.942</div><div class="muted">prompt tokens/sec</div></div>
+    <div class="card"><div class="muted">Best observed</div><div class="kpi">1340.942</div><div class="muted">metric value</div></div>
     <div class="card"><div class="muted">Improvement from first point</div><div class="kpi">+10.5%</div><div class="muted">search metric delta</div></div>
-    <div class="card"><div class="muted">Experiments plotted</div><div class="kpi">5</div><div class="muted">baseline/challengers/repeats</div></div>
+    <div class="card"><div class="muted">Experiments recorded</div><div class="kpi">32</div><div class="muted">ledger rows, 20 plotted</div></div>
   </div>
   <svg viewBox="0 0 1120 430" role="img" aria-label="Autoresearch optimization trace">
-    <line x1='70' x2='1090' y1='364.0' y2='364.0' class='grid'/><text x='60' y='368.0' text-anchor='end'>1187</text><line x1='70' x2='1090' y1='280.0' y2='280.0' class='grid'/><text x='60' y='284.0' text-anchor='end'>1232</text><line x1='70' x2='1090' y1='196.0' y2='196.0' class='grid'/><text x='60' y='200.0' text-anchor='end'>1277</text><line x1='70' x2='1090' y1='112.0' y2='112.0' class='grid'/><text x='60' y='116.0' text-anchor='end'>1323</text><line x1='70' x2='1090' y1='28.0' y2='28.0' class='grid'/><text x='60' y='32.0' text-anchor='end'>1368</text>
+    <line x1='70' x2='1090' y1='364.0' y2='364.0' class='grid'/><text x='60' y='368.0' text-anchor='end'>952</text>
+    <line x1='70' x2='1090' y1='280.0' y2='280.0' class='grid'/><text x='60' y='284.0' text-anchor='end'>1058</text>
+    <line x1='70' x2='1090' y1='196.0' y2='196.0' class='grid'/><text x='60' y='200.0' text-anchor='end'>1164</text>
+    <line x1='70' x2='1090' y1='112.0' y2='112.0' class='grid'/><text x='60' y='116.0' text-anchor='end'>1270</text>
+    <line x1='70' x2='1090' y1='28.0' y2='28.0' class='grid'/><text x='60' y='32.0' text-anchor='end'>1376</text>
     <line x1="70" x2="1090" y1="364" y2="364" class="axis"/>
     <line x1="70" x2="70" y1="28" y2="364" class="axis"/>
-    <path d="M70.0,314.1 L325.0,163.9 L580.0,173.4 L835.0,77.9 L1090.0,140.8" class="raw"/>
-    <path d="M70.0,314.1 L325.0,163.9 L580.0,163.9 L835.0,77.9 L1090.0,77.9" class="best"/>
-    <circle class='keep' cx='70.0' cy='314.1' r='7'><title>current-65k-default @ 60k: 1213.997</title></circle><circle class='keep' cx='325.0' cy='163.9' r='7'><title>b1024-ub512 @ 60k: 1294.740</title></circle><circle class='discard' cx='580.0' cy='173.4' r='7'><title>b2048-ub512 @ 60k: 1289.601</title></circle><circle class='keep' cx='835.0' cy='77.9' r='7'><title>b1024-ub1024 @ 60k: 1340.942</title></circle><circle class='repeat' cx='1090.0' cy='140.8' r='7'><title>b1024-ub1024-repeat @ 60k: 1307.122</title></circle>
-    <text x='70.0' y='302.1' text-anchor='middle'>current-65k-default @ 60k</text><text x='325.0' y='151.9' text-anchor='middle'>b1024-ub512 @ 60k</text><text x='835.0' y='65.9' text-anchor='middle'>b1024-ub1024 @ 60k</text><text x='1090.0' y='128.8' text-anchor='middle'>b1024-ub1024-repeat @ 60k</text>
+    <path d="M70.0,156.6 L123.7,92.6 L177.4,96.7 L231.1,56.0 L284.7,82.8 L338.4,336.0 L392.1,172.9 L445.8,139.2 L499.5,73.2 L553.2,67.2 L606.8,88.4 L660.5,197.7 L714.2,147.9 L767.9,97.4 L821.6,98.3 L875.3,131.0 L928.9,95.7 L982.6,84.7 L1036.3,148.4 L1090.0,320.8" class="raw"/>
+    <path d="M70.0,156.6 L123.7,92.6 L177.4,92.6 L231.1,56.0 L284.7,56.0 L338.4,56.0 L392.1,56.0 L445.8,56.0 L499.5,56.0 L553.2,56.0 L606.8,56.0 L660.5,56.0 L714.2,56.0 L767.9,56.0 L821.6,56.0 L875.3,56.0 L928.9,56.0 L982.6,56.0 L1036.3,56.0 L1090.0,56.0" class="best"/>
+    <circle class='keep' cx='70.0' cy='156.6' r='7'><title>current-65k-default @ 61440: 1213.997</title></circle>
+    <circle class='keep' cx='123.7' cy='92.6' r='7'><title>b1024-ub512 @ 61440: 1294.740</title></circle>
+    <circle class='discard' cx='177.4' cy='96.7' r='7'><title>b2048-ub512 @ 61440: 1289.601</title></circle>
+    <circle class='keep' cx='231.1' cy='56.0' r='7'><title>b1024-ub1024 @ 61440: 1340.942</title></circle>
+    <circle class='repeat' cx='284.7' cy='82.8' r='7'><title>b1024-ub1024-repeat @ 61440: 1307.122</title></circle>
+    <circle class='discard' cx='338.4' cy='336.0' r='7'><title>b1024-ub1024-repeat3 @ 61440: 987.449</title></circle>
+    <circle class='repeat' cx='392.1' cy='172.9' r='7'><title>fixed-current-live-42k @ 42000: 1193.416</title></circle>
+    <circle class='keep' cx='445.8' cy='139.2' r='7'><title>baseline-default-42k @ 42000: 1235.880</title></circle>
+    <circle class='repeat' cx='499.5' cy='73.2' r='7'><title>challenger-b1024-ub1024-42k @ 42000: 1319.205</title></circle>
+    <circle class='repeat' cx='553.2' cy='67.2' r='7'><title>challenger-b1024-ub1024-repeat2-42k @ 42000: 1326.823</title></circle>
+    <circle class='keep' cx='606.8' cy='88.4' r='7'><title>challenger-b1024-ub768-42k @ 42000: 1300.004</title></circle>
+    <circle class='discard' cx='660.5' cy='197.7' r='7'><title>challenger-b1024-ub768-repeat2-42k @ 42000: 1162.069</title></circle>
+    <circle class='keep' cx='714.2' cy='147.9' r='7'><title>baseline-default-repeat2-42k @ 42000: 1224.956</title></circle>
+    <circle class='keep' cx='767.9' cy='97.4' r='7'><title>challenger-b1024-ub512-42k @ 42000: 1288.665</title></circle>
+    <circle class='keep' cx='821.6' cy='98.3' r='7'><title>challenger-b1024-ub512-repeat2-42k @ 42000: 1287.496</title></circle>
+    <circle class='repeat' cx='875.3' cy='131.0' r='7'><title>baseline-default-stream-42k @ 42000: 1246.247</title></circle>
+    <circle class='keep' cx='928.9' cy='95.7' r='7'><title>challenger-b1024-ub512-stream-42k @ 42000: 1290.782</title></circle>
+    <circle class='keep' cx='982.6' cy='84.7' r='7'><title>challenger-b1024-ub512-stream-repeat2-42k @ 42000: 1304.722</title></circle>
+    <circle class='repeat' cx='1036.3' cy='148.4' r='7'><title>baseline-default-stream-repeat2-42k @ 42000: 1224.286</title></circle>
+    <circle class='discard' cx='1090.0' cy='320.8' r='7'><title>mtp-stream-42k @ 42000: 1006.671</title></circle>
+    <text x='70.0' y='144.6' text-anchor='middle'>current-65k-default @ 61440</text>
+    <text x='123.7' y='80.6' text-anchor='middle'>b1024-ub512 @ 61440</text>
+    <text x='231.1' y='44.0' text-anchor='middle'>b1024-ub1024 @ 61440</text>
+    <text x='1090.0' y='308.8' text-anchor='middle'>mtp-stream-42k @ 42000</text>
     <text x="70" y="408">experiment step</text>
     <text x="18" y="46" transform="rotate(-90 18,46)">prompt_per_second</text>
-  </svg>
+    </svg>
   <h2>Experiment ledger</h2>
   <table>
-    <tr><th>Step</th><th>Status</th><th>Metric</th><th>Change</th><th>Elapsed s</th><th>Prompt n</th><th>Artifact</th></tr>
-    <tr><td>0</td><td><span class='dot keep'></span>keep</td><td>1213.997</td><td>current-65k-default @ 60k</td><td>39.873</td><td>43917</td><td><code>results.csv</code></td></tr><tr><td>1</td><td><span class='dot keep'></span>keep</td><td>1294.740</td><td>b1024-ub512 @ 60k</td><td>33.766</td><td>42091</td><td><code>results.csv</code></td></tr><tr><td>2</td><td><span class='dot discard'></span>discard</td><td>1289.601</td><td>b2048-ub512 @ 60k</td><td>33.869</td><td>42091</td><td><code>results.csv</code></td></tr><tr><td>3</td><td><span class='dot keep'></span>keep</td><td>1340.942</td><td>b1024-ub1024 @ 60k</td><td>32.648</td><td>42092</td><td><code>results.csv</code></td></tr><tr><td>4</td><td><span class='dot repeat'></span>repeat</td><td>1307.122</td><td>b1024-ub1024-repeat @ 60k</td><td>33.100</td><td>42080</td><td><code>results.csv</code></td></tr>
+    <tr><th>Step</th><th>Decision</th><th>prompt_per_second</th><th>Variant</th><th>Target</th><th>Elapsed s</th><th>Prompt n</th><th>Artifact</th></tr>
+    <tr><td>0</td><td><span class='dot keep'></span>baseline</td><td>1213.997</td><td>current-65k-default</td><td>61440</td><td>39.873</td><td>43917</td><td><code>direct-prefill-current-65k-20260625_030822.csv</code></td></tr>
+<tr><td>1</td><td><span class='dot keep'></span>keep</td><td>1294.740</td><td>b1024-ub512</td><td>61440</td><td>33.766</td><td>42091</td><td><code>single-b1024-ub512-20260625_031650.csv</code></td></tr>
+<tr><td>2</td><td><span class='dot discard'></span>discard</td><td>1289.601</td><td>b2048-ub512</td><td>61440</td><td>33.869</td><td>42091</td><td><code>single-b2048-ub512-20260625_032258.csv</code></td></tr>
+<tr><td>3</td><td><span class='dot keep'></span>keep</td><td>1340.942</td><td>b1024-ub1024</td><td>61440</td><td>32.648</td><td>42092</td><td><code>single-b1024-ub1024-20260625_033009.csv</code></td></tr>
+<tr><td>4</td><td><span class='dot repeat'></span>repeat</td><td>1307.122</td><td>b1024-ub1024-repeat</td><td>61440</td><td>33.100</td><td>42080</td><td><code>repeat-b1024-ub1024-61k-20260625_034455.csv</code></td></tr>
+<tr><td>5</td><td><span class='dot discard'></span>discard</td><td>987.449</td><td>b1024-ub1024-repeat3</td><td>61440</td><td>43.522</td><td>41012</td><td><code>repeat3-b1024-ub1024-61k-20260625_040209.csv</code></td></tr>
+<tr><td>6</td><td><span class='dot repeat'></span>measure</td><td>1193.416</td><td>fixed-current-live-42k</td><td>42000</td><td>41.916</td><td>41382</td><td><code>fixed-current-42k-20260626_194012.csv</code></td></tr>
+<tr><td>7</td><td><span class='dot discard'></span>fail</td><td></td><td>baseline-default-42k-aborted</td><td>42000</td><td></td><td></td><td><code>manual-observation-20260626_2015</code></td></tr>
+<tr><td>8</td><td><span class='dot keep'></span>baseline</td><td>1235.880</td><td>baseline-default-42k</td><td>42000</td><td>33.821</td><td>41383</td><td><code>baseline-default-42k-20260626_201802.csv</code></td></tr>
+<tr><td>9</td><td><span class='dot repeat'></span>needs-repeat</td><td>1319.205</td><td>challenger-b1024-ub1024-42k</td><td>42000</td><td>31.683</td><td>41383</td><td><code>challenger-b1024-ub1024-42k-20260626_202237.csv</code></td></tr>
+<tr><td>10</td><td><span class='dot repeat'></span>no-promote</td><td>1326.823</td><td>challenger-b1024-ub1024-repeat2-42k</td><td>42000</td><td>31.489</td><td>41383</td><td><code>challenger-b1024-ub1024-repeat2-42k-20260626_203547.csv</code></td></tr>
+<tr><td>11</td><td><span class='dot keep'></span>needs-task-gate</td><td>1300.004</td><td>challenger-b1024-ub768-42k</td><td>42000</td><td>32.136</td><td>41383</td><td><code>challenger-b1024-ub768-42k-20260626_203954.csv</code></td></tr>
+<tr><td>12</td><td><span class='dot discard'></span>discard</td><td>1162.069</td><td>challenger-b1024-ub768-repeat2-42k</td><td>42000</td><td>36.081</td><td>41383</td><td><code>challenger-b1024-ub768-repeat2-42k-20260626_205018.csv</code></td></tr>
+<tr><td>13</td><td><span class='dot keep'></span>baseline</td><td>1224.956</td><td>baseline-default-repeat2-42k</td><td>42000</td><td>34.083</td><td>41383</td><td><code>baseline-default-repeat2-42k-20260626_205655.csv</code></td></tr>
+<tr><td>14</td><td><span class='dot keep'></span>needs-repeat-task-gate</td><td>1288.665</td><td>challenger-b1024-ub512-42k</td><td>42000</td><td>32.412</td><td>41383</td><td><code>challenger-b1024-ub512-42k-20260626_210138.csv</code></td></tr>
+<tr><td>15</td><td><span class='dot keep'></span>synthetic-repeat-pass</td><td>1287.496</td><td>challenger-b1024-ub512-repeat2-42k</td><td>42000</td><td>32.445</td><td>41383</td><td><code>challenger-b1024-ub512-repeat2-42k-20260626_211055.csv</code></td></tr>
+<tr><td>16</td><td><span class='dot keep'></span>route-gate-pass</td><td></td><td>route-gate-b1024-ub512</td><td>8192</td><td>4.608</td><td>6050</td><td><code>route-gate-b1024-ub512-proxy-throughput-20260626_2111.csv</code></td></tr>
+<tr><td>17</td><td><span class='dot discard'></span>fail</td><td></td><td>hermes-workflow-gate-harness-v1</td><td>12000</td><td>0.039</td><td></td><td><code>hermes-workflow-gate-b1024-ub512-failed-harness-20260626_212413.csv</code></td></tr>
+<tr><td>18</td><td><span class='dot keep'></span>workflow-gate-pass</td><td></td><td>hermes-workflow-gate-b1024-ub512</td><td>12000</td><td>11.519</td><td>12424</td><td><code>hermes-workflow-gate-b1024-ub512-20260626_212515.csv</code></td></tr>
+<tr><td>19</td><td><span class='dot keep'></span>ops-artifact</td><td></td><td>launcher-balanced-1024-512</td><td>65536</td><td></td><td></td><td><code>Start-Qwen36AutoresearchCandidate.ps1</code></td></tr>
+<tr><td>20</td><td><span class='dot keep'></span>launcher-verified</td><td></td><td>launcher-balanced-1024-512-live</td><td>65536</td><td></td><td></td><td><code>candidate-launcher-balanced-1024-512-20260626_2137.txt</code></td></tr>
+<tr><td>21</td><td><span class='dot repeat'></span>instrumented-baseline</td><td>1246.247</td><td>baseline-default-stream-42k</td><td>42000</td><td>35.775</td><td>41383</td><td><code>baseline-default-stream-42k-20260711_211511.csv</code></td></tr>
+<tr><td>22</td><td><span class='dot keep'></span>instrumented-challenger</td><td>1290.782</td><td>challenger-b1024-ub512-stream-42k</td><td>42000</td><td>33.049</td><td>41383</td><td><code>challenger-b1024-ub512-stream-42k-20260711_212031.csv</code></td></tr>
+<tr><td>23</td><td><span class='dot keep'></span>instrumented-repeat-pass</td><td>1304.722</td><td>challenger-b1024-ub512-stream-repeat2-42k</td><td>42000</td><td>32.660</td><td>41383</td><td><code>challenger-b1024-ub512-stream-repeat2-42k-20260711_212116.csv</code></td></tr>
+<tr><td>24</td><td><span class='dot keep'></span>instrumented-workflow-gate-pass</td><td></td><td>hermes-workflow-gate-b1024-ub512-instrumented</td><td>12000</td><td>11.181</td><td>12424</td><td><code>hermes-workflow-gate-b1024-ub512-instrumented-20260711_212208.csv</code></td></tr>
+<tr><td>25</td><td><span class='dot repeat'></span>instrumented-baseline-repeat</td><td>1224.286</td><td>baseline-default-stream-repeat2-42k</td><td>42000</td><td>34.792</td><td>41383</td><td><code>baseline-default-stream-repeat2-42k-20260711_212654.csv</code></td></tr>
+<tr><td>26</td><td><span class='dot repeat'></span>decode-baseline</td><td></td><td>decode-default-512-repeat2</td><td>512</td><td>11.828</td><td>511</td><td><code>decode-default-512-repeat2-20260711_2136.csv</code></td></tr>
+<tr><td>27</td><td><span class='dot repeat'></span>decode-baseline-repeat</td><td></td><td>decode-default-512-repeat3</td><td>512</td><td>11.713</td><td>511</td><td><code>decode-default-512-repeat3-20260711_2137.csv</code></td></tr>
+<tr><td>28</td><td><span class='dot discard'></span>mtp-decode-challenger</td><td></td><td>decode-mtp-512</td><td>512</td><td>8.022</td><td>511</td><td><code>decode-mtp-512-20260711_2139.csv</code></td></tr>
+<tr><td>29</td><td><span class='dot discard'></span>mtp-decode-repeat</td><td></td><td>decode-mtp-512-repeat2</td><td>512</td><td>7.556</td><td>511</td><td><code>decode-mtp-512-repeat2-20260711_2139.csv</code></td></tr>
+<tr><td>30</td><td><span class='dot discard'></span>mtp-prefill-regression</td><td>1006.671</td><td>mtp-stream-42k</td><td>42000</td><td>43.448</td><td>41383</td><td><code>challenger-mtp-stream-42k-20260711_2140.csv</code></td></tr>
+<tr><td>31</td><td><span class='dot discard'></span>mtp-workflow-gate-fail</td><td></td><td>hermes-workflow-gate-mtp</td><td>12000</td><td>18.700</td><td>12424</td><td><code>hermes-workflow-gate-mtp-20260711_2141.csv</code></td></tr>
   </table>
 </main>
 </body>

@@ -1,5 +1,11 @@
 # Reports
 
+- [Watson stack and Qwen3.8 evaluation, 2026-09-01](watson-qwen38-evaluation-2026-09-01.md)
+- [Hermes/Discord observability and local compaction, 2026-09-01](hermes-discord-observability-2026-09-01.md)
+- [Watson vs Ternary Bonsai evaluation, 2026-07-29](watson-bonsai-evaluation-2026-07-29.md)
+- [USB Wi-Fi adapter stability, 2026-07-29](wifi-adapter-stability-2026-07-29.md)
+- [Watson stack audit, 2026-07-11](watson-stack-audit-2026-07-11.md)
+
 Benchmark reports and dated result summaries live here.
 
 Use this section for measured results that should be read as conclusions, not as raw trace captures.

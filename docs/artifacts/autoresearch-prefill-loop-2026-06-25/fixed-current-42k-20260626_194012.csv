@@ -1,0 +1,7 @@
+"variant","prompt_tokens_target","prompt_tokens_tokenized","prompt_chars","elapsed_s","cache_n","prompt_n","prompt_ms","prompt_per_second","predicted_ms","predicted_per_second","tokens_cached","tokens_evaluated","gpu_free_before_mib","gpu_free_after_mib","corpus_path","output_preview"
+"fixed-current-live-42k","42000","41382","233877","41.916","0","41382","34675.246","1193.416","440.17","36.35","41397","41382","606","636","_tmp\bench\autoresearch-prefill-loop\fixed-corpus-42k.txt","
+
+<think>
+Here's a thinking process:
+
+1.  **Analyze"

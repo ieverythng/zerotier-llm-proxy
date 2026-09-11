@@ -1,0 +1,4 @@
+"variant","status","streaming","ignore_eos","prompt_tokens_target","prompt_tokens_tokenized","prompt_chars","elapsed_s","response_headers_ms","first_token_ms","cache_n","prompt_n","prompt_ms","prompt_per_second","predicted_ms","predicted_per_second","draft_n","draft_n_accepted","draft_acceptance_pct","tokens_cached","tokens_evaluated","gpu_free_before_mib","gpu_free_min_mib","gpu_free_after_mib","gpu_max_utilization_pct","gpu_sample_count","gpu_sample_interval_ms","corpus_path","output_preview","error"
+"qwen38-iq3s-official-cuda133-70k-at-80k","ok","True","False","70000","68968","389844","64.595","123.897","64103.48","0","68968","63969.992","1078.131","458.089","32.745","","","","68983","68968","1466","1402","1405","99","254","250","","
+
+BEGIN_WATSON_FIXED_CORPUS session_fact: watson fixed corpus",""

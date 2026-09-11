@@ -1,10 +1,10 @@
 param(
-    [string[]]$ServerContextSizes = @("65536", "98304"),
+    [string[]]$ServerContextSizes = @("65536", "98304", "100096"),
     [string[]]$PromptContextTokens = @("0", "8192", "32768", "65536"),
-    [int]$RestoreContextSize = 65536,
+    [int]$RestoreContextSize = 100096,
     [int]$LlamaPort = 8080,
     [int]$LiteLLMPort = 4000,
-    [string]$Model = "qwen36-turbo-hermes",
+    [string]$Model = "qwen3.8",
     [string]$ApiKey = "local-qwen36",
     [int]$RequestsPerContext = 1,
     [int]$MaxOutputTokens = 64,
@@ -17,7 +17,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $llamaRepo = "C:\Users\Admin\PROJECTS\llama-cpp-server"
 $stopScript = Join-Path $llamaRepo "scripts\stop_llama_server.ps1"
-$startScript = Join-Path $PSScriptRoot "Start-Qwen36ZeroTierStack.ps1"
+$startScript = Join-Path $PSScriptRoot "Start-WatsonStack.ps1"
 $measureScript = Join-Path $PSScriptRoot "Measure-Qwen36ProxyThroughput.ps1"
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $outDir = Join-Path $repoRoot "_tmp\bench\context-sweep-$stamp"

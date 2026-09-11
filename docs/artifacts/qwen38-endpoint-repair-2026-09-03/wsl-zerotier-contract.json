@@ -1,0 +1,37 @@
+{
+  "base_url": "http://10.88.140.94:4000/v1",
+  "model": "qwen3.8",
+  "passed": true,
+  "cases": [
+    {
+      "case": "marker_1",
+      "passed": true,
+      "elapsed_s": 0.997
+    },
+    {
+      "case": "marker_2",
+      "passed": true,
+      "elapsed_s": 0.394
+    },
+    {
+      "case": "stream",
+      "passed": true,
+      "elapsed_s": 0.406
+    },
+    {
+      "case": "hermes_reasoning_setting",
+      "passed": true,
+      "elapsed_s": 0.398
+    },
+    {
+      "case": "tool_call",
+      "passed": true,
+      "elapsed_s": 1.351
+    },
+    {
+      "case": "strict_json",
+      "passed": true,
+      "elapsed_s": 0.545
+    }
+  ]
+}

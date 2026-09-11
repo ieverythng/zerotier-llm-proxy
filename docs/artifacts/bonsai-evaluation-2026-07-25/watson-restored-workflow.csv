@@ -1,0 +1,11 @@
+"case","passed","reason","elapsed_s","input_tokens","output_tokens","cached_tokens","gpu_free_before_mib","gpu_free_after_mib","output_preview"
+"exact_response","True","expected exact marker","0.401","22","7","0","937","935","HERMES_WORKFLOW_GATE_OK"
+"tool_json_selection","True","strict JSON tool=apply_patch","1.205","68","41","0","935","933","{
+  ""tool"": ""apply_patch"",
+  ""reason"": ""The task requires editing a repository file, which is best handled by applying a patch to modify the existing content.""
+}"
+"long_history_retention","True","sentinel/action retention","8.879","12424","16","0","933","891","HERMES_GATE_SENTINEL_71429 choose_patch_file"
+"continuation_summary","True","continuation JSON","1.108","61","24","0","891","891","{
+  ""continue"": true,
+  ""next_gate"": ""hermes_discord_workflow""
+}"

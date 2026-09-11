@@ -3,17 +3,24 @@
 # Or at: C:\Users\Admin\.litellm\config.yaml
 
 model_list:
+  # Canonical public name served by llama.cpp.
+  - model_name: qwen3.8
+    litellm_params:
+      model: openai/qwen3.8
+      api_base: http://127.0.0.1:8080/v1
+      api_key: os.environ/LLAMA_CPP_API_KEY
+
   # Main model with speculative decoding (DFlash draft)
   - model_name: qwen36-turbo-hermes-spec
     litellm_params:
-      model: openai/qwen36-turbo-hermes-spec
+      model: openai/qwen3.8
       api_base: http://127.0.0.1:8080/v1
       api_key: os.environ/LLAMA_CPP_API_KEY
 
   # Legacy alias for backward compatibility (points to same server)
   - model_name: qwen36-turbo-hermes
     litellm_params:
-      model: openai/qwen36-turbo-hermes-spec
+      model: openai/qwen3.8
       api_base: http://127.0.0.1:8080/v1
       api_key: os.environ/LLAMA_CPP_API_KEY
 

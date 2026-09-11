@@ -1,0 +1,56 @@
+{
+  "variant": "qwen38-official-cuda133-repair-20260903",
+  "base_url": "http://127.0.0.1:8080/v1",
+  "model": "qwen3.8",
+  "generated_at": "2026-09-03T17:59:05.9571193+02:00",
+  "passed": 4,
+  "total": 5,
+  "total_elapsed_s": 36.868,
+  "rows": [
+    {
+      "case": "context_explanation",
+      "passed": true,
+      "reason": "words=77 runtime=True kv=True",
+      "elapsed_s": 9.792,
+      "word_count": 77,
+      "output": "Training on 262k tokens teaches long-range dependencies, but serving at 65,536 limits immediate recall. This reduction optimizes runtime resource allocation. Specifically, it drastically shrinks the Key-Value (KV) cache memory footprint per request. Since KV-cache size scales linearly with sequence length, halving the context window significantly reduces GPU VRAM consumption. This tradeoff allows higher concurrency and throughput on fixed hardware, making deployment more cost-effective while retaining most practical utility for typical user interactions that rarely exceed 64k tokens.",
+      "error": ""
+    },
+    {
+      "case": "code_diagnosis_json",
+      "passed": true,
+      "reason": "strict JSON and corrected bound=True",
+      "elapsed_s": 1.997,
+      "word_count": 40,
+      "output": "{\n  \"bug\": \"Off-by-one error causing an out-of-bounds access on the last iteration, which results in a TypeError when trying to read the 'price' property of undefined.\",\n  \"fix\": \"Change the loop condition from i <= items.length to i < items.length.\"\n}",
+      "error": ""
+    },
+    {
+      "case": "constraint_plan_json",
+      "passed": true,
+      "reason": "order=A,B,C,D",
+      "elapsed_s": 5.643,
+      "word_count": 1,
+      "output": "{\"order\":[\"A\",\"B\",\"C\",\"D\"]}",
+      "error": ""
+    },
+    {
+      "case": "uncertainty_restraint",
+      "passed": true,
+      "reason": "admits_unknown=True requests_evidence=True",
+      "elapsed_s": 4.269,
+      "word_count": 109,
+      "output": "I do not have access to the \"private nao repository\" or any specific internal codebase you are referring to. As an AI, I cannot browse private repositories, access your local file system, or view commit histories for projects that are not publicly available on platforms like GitHub, GitLab, or Bitbucket.\n\nTo find the exact commit and changed files, you would need to:\n\n1. **Access the repository** using your credentials.\n2. **Search the commit history** for keywords such as \"Universal Agentic Harness,\" \"agentic harness,\" or related terms. You can use commands like:\n   ```bash\n   git log --all --oneline --grep=\"Universal Agentic Harness\"\n   ```\n3. **Inspect the specific commit** once identified to see",
+      "error": ""
+    },
+    {
+      "case": "discord_response_style",
+      "passed": false,
+      "reason": "words=118 bullets=3 prefill=True measurements=True",
+      "elapsed_s": 15.167,
+      "word_count": 118,
+      "output": "*   **Bottleneck:** You’re hitting VRAM capacity limits, not compute speed. A 100k context requires massive KV cache storage; if it exceeds your 16GB limit, the system thrashes to CPU RAM or stalls during allocation, making it appear frozen rather than slow.\n*   **Measurement 1:** Monitor `nvidia-smi` in real-time. If VRAM usage hits 100% and stays there while GPU utilization drops to near-zero, you’ve confirmed memory exhaustion. Check for swap activity if your OS reports disk I/O spikes.\n*   **Measurement 2:** Profile the prefill phase specifically. Use `nsys` or PyTorch profiler to isolate time spent in attention kernel initialization versus actual token generation. If prefill takes minutes while decode is normal, it’s a memory bandwidth bottleneck during cache population.",
+      "error": ""
+    }
+  ]
+}

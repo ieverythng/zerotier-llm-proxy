@@ -1,0 +1,4 @@
+"variant","status","streaming","ignore_eos","prompt_tokens_target","prompt_tokens_tokenized","prompt_chars","elapsed_s","response_headers_ms","first_token_ms","cache_n","prompt_n","prompt_ms","prompt_per_second","predicted_ms","predicted_per_second","draft_n","draft_n_accepted","draft_acceptance_pct","tokens_cached","tokens_evaluated","gpu_free_before_mib","gpu_free_min_mib","gpu_free_after_mib","gpu_max_utilization_pct","gpu_sample_count","gpu_sample_interval_ms","corpus_path","output_preview","error"
+"qwen38-iq3s-official-cuda133-80k-at-90k","ok","True","False","80000","78822","445557","78.327","219.29","78023.291","0","78822","77812.284","1012.976","254.801","27.472","","","","78829","78822","1094","1002","1061","99","306","250","","
+
+BEGIN_WATSON_FIXED_CORP",""

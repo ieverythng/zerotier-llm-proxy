@@ -1,0 +1,56 @@
+﻿{
+    "variant":  "qwen38-q3kxl",
+    "base_url":  "http://127.0.0.1:8080/v1",
+    "model":  "qwen36-turbo-hermes",
+    "generated_at":  "2026-09-01T14:07:14.7963879+02:00",
+    "passed":  3,
+    "total":  5,
+    "total_elapsed_s":  13.117,
+    "rows":  [
+                 {
+                     "case":  "context_explanation",
+                     "passed":  false,
+                     "reason":  "words=93 runtime=True kv=True",
+                     "elapsed_s":  3.2,
+                     "word_count":  93,
+                     "output":  "Training on 262k tokens teaches the model long-range dependencies, but serving at 65,536 tokens is a deliberate operational choice. The primary constraint is KV-cache memory: storing key-value pairs for every token in the context window consumes massive GPU VRAM. A 262k window would require four times the cache memory of a 65k window, drastically reducing batch sizes or requiring expensive hardware. By limiting the runtime allocation to 65,536 tokens, providers optimize memory efficiency and throughput, ensuring stable performance for most users while retaining the model’s learned ability to process long sequences when necessary.",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "code_diagnosis_json",
+                     "passed":  true,
+                     "reason":  "strict JSON and corrected bound=True",
+                     "elapsed_s":  1.601,
+                     "word_count":  37,
+                     "output":  "{\n  \"bug\": \"Off-by-one error causes an out-of-bounds access on the last iteration, resulting in a TypeError when trying to read .price of undefined.\",\n  \"fix\": \"Change the loop condition from i \u003c= items.length to i \u003c items.length.\"\n}",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "constraint_plan_json",
+                     "passed":  true,
+                     "reason":  "order=A,B,C,D",
+                     "elapsed_s":  0.652,
+                     "word_count":  1,
+                     "output":  "{\"order\":[\"A\",\"B\",\"C\",\"D\"]}",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "uncertainty_restraint",
+                     "passed":  true,
+                     "reason":  "admits_unknown=True requests_evidence=True",
+                     "elapsed_s":  3.756,
+                     "word_count":  114,
+                     "output":  "I cannot provide the specific commit hash or list of changed files for the \"Universal Agentic Harness\" in a private `nao` repository because:\n\n1.  **No Repository Access:** As stated, I do not have access to any private repositories.\n2.  **Lack of Context:** The term \"private nao repository\" is ambiguous without a specific organization name (e.g., GitHub user/org), and \"Universal Agentic Harness\" is not a widely recognized public standard or open-source project with a single definitive commit history that I can verify from general knowledge.\n3.  **Privacy/Security:** Even if such a repository existed publicly, providing exact internal commit details for private codebases is not possible without direct access to the version control system (e.g., Git).\n\n",
+                     "error":  ""
+                 },
+                 {
+                     "case":  "discord_response_style",
+                     "passed":  false,
+                     "reason":  "words=115 bullets=3 prefill=True measurements=True",
+                     "elapsed_s":  3.908,
+                     "word_count":  115,
+                     "output":  "*   **Bottleneck:** You’re hitting VRAM capacity limits, not compute speed. A 100k context requires massive KV cache storage; if it exceeds available memory, the system thrashes or stalls waiting for CPU offload, making it appear frozen rather than slow.\n*   **Measurement 1:** Check `nvidia-smi` during inference. If VRAM usage is pinned at 16GB and swapping to system RAM occurs, you’ve confirmed the memory wall. Look for high swap activity in your OS task manager simultaneously.\n*   **Measurement 2:** Profile time-to-first-token (TTFT) versus inter-token latency. If TTFT is infinite or extremely long but subsequent tokens generate normally once started, it’s a prefill bottleneck caused by insufficient parallelism or memory pressure during the initial context processing phase.",
+                     "error":  ""
+                 }
+             ]
+}

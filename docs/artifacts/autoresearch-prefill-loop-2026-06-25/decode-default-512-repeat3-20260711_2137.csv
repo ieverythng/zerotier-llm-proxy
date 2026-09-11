@@ -1,0 +1,8 @@
+"variant","status","streaming","ignore_eos","prompt_tokens_target","prompt_tokens_tokenized","prompt_chars","elapsed_s","response_headers_ms","first_token_ms","cache_n","prompt_n","prompt_ms","prompt_per_second","predicted_ms","predicted_per_second","tokens_cached","tokens_evaluated","gpu_free_before_mib","gpu_free_min_mib","gpu_free_after_mib","gpu_max_utilization_pct","gpu_sample_count","gpu_sample_interval_ms","corpus_path","output_preview","error"
+"decode-default-512-repeat3","ok","True","True","512","511","2795","11.713","430.536","444.15","0","511","410.357","1245.257","11275.262","45.409","1022","511","839","837","847","96","48","250","_tmp/bench/autoresearch-prefill-loop/fixed-corpus-512.txt","Return one compact sentence containing BEGIN_WATSON_FIXED_CORPUS and END_WAT
+
+<think>
+Here's a thinking process:
+
+1.  **Analyze User Input:**
+   - The input con",""

@@ -1,6 +1,6 @@
 param(
     [string]$BaseUrl = "http://10.88.140.94:4000/v1",
-    [string]$Model = "qwen36-turbo-hermes-spec",
+    [string]$Model = "qwen3.8",
     [int]$LongPromptRepeats = 620,
     [int]$MaxTokens = 64,
     [string]$OutFile = ""

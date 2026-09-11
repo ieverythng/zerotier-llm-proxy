@@ -16,6 +16,7 @@ class DFlashProxyHandler(BaseHTTPRequestHandler):
     upstream_base = "http://127.0.0.1:8080"
     max_output_tokens_cap = int(os.environ.get("DFLASH_PROXY_MAX_OUTPUT_TOKENS", "1024"))
     model_aliases = {
+        "qwen3.8": "qwen36-turbo-hermes-spec",
         "qwen36-turbo-hermes": "qwen36-turbo-hermes-spec",
         "qwen36-turbo-hermes-llama": "qwen36-turbo-hermes-spec",
     }

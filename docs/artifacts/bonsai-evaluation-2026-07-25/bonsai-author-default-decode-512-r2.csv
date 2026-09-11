@@ -1,0 +1,8 @@
+"variant","status","streaming","ignore_eos","prompt_tokens_target","prompt_tokens_tokenized","prompt_chars","elapsed_s","response_headers_ms","first_token_ms","cache_n","prompt_n","prompt_ms","prompt_per_second","predicted_ms","predicted_per_second","draft_n","draft_n_accepted","draft_acceptance_pct","tokens_cached","tokens_evaluated","gpu_free_before_mib","gpu_free_min_mib","gpu_free_after_mib","gpu_max_utilization_pct","gpu_sample_count","gpu_sample_interval_ms","corpus_path","output_preview","error"
+"bonsai-author-default-decode-512-r2","ok","True","True","512","511","2795","7.287","31.284","390.133","0","511","359.187","1422.657","6886.154","74.352","","","","1022","511","1819","1653","1737","99","30","250","_tmp/bench/autoresearch-prefill-loop/fixed-corpus-512.txt","Return one compact sentence containing BEGIN_WATSON_FIXED_CORPUS and END_WATSON_FIXED_CORPUS.
+
+<think>
+Here's a thinking process:
+
+1.  **Analyze User Input:**
+ ",""

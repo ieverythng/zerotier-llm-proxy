@@ -1,0 +1,5 @@
+"variant","status","streaming","ignore_eos","prompt_tokens_target","prompt_tokens_tokenized","prompt_chars","elapsed_s","response_headers_ms","first_token_ms","cache_n","prompt_n","prompt_ms","prompt_per_second","predicted_ms","predicted_per_second","draft_n","draft_n_accepted","draft_acceptance_pct","tokens_cached","tokens_evaluated","gpu_free_before_mib","gpu_free_min_mib","gpu_free_after_mib","gpu_max_utilization_pct","gpu_sample_count","gpu_sample_interval_ms","corpus_path","output_preview","error"
+"bonsai-kv4-c102400-b2048-100k","ok","True","True","100000","98505","556838","95.526","179.064","94704.628","0","98505","94521.901","1042.139","785.054","40.762","","","","98536","98505","6236","6203","6222","100","374","250","_tmp\bench\bonsai\fixed-corpus-100k.txt","Return one compact sentence containing BEGIN_WATSON_FIXED_CORPUS and END_WATSON_FIXED_CORPUS.
+
+<think>
+Here's a thinking process:",""

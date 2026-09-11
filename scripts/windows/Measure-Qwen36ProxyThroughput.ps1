@@ -1,7 +1,7 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:4000/v1",
     [string]$ApiKey = "local-qwen36",
-    [string]$Model = "qwen36-turbo-hermes",
+    [string]$Model = "qwen3.8",
     [string[]]$ContextTokens = @("0", "8192", "32768", "65536"),
     [int]$RequestsPerContext = 2,
     [int]$MaxOutputTokens = 128,

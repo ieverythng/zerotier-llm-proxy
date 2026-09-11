@@ -11,7 +11,7 @@ This document describes the runtime architecture used for Watson/Hermes local in
 The canonical launcher is:
 
 ```powershell
-C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-Qwen36ZeroTierStack.ps1
+C:\Users\Admin\PROJECTS\zerotier-llm-proxy\scripts\windows\Start-WatsonStack.ps1
 ```
 
 Lazarus must call that launcher for stack recovery and context reruns. It should not start an independent WSL LiteLLM process or bypass the Windows launcher.
@@ -30,9 +30,9 @@ flowchart LR
     Discord["Discord channel / Hermes gateway"]
     Hermes["Hermes agent runtime"]
     Lazarus["Lazarus recovery scripts<br/>/home/juanbeck/Watson/scripts"]
-    Launcher["Canonical Windows launcher<br/>Start-Qwen36ZeroTierStack.ps1"]
+    Launcher["Canonical Windows launcher<br/>Start-WatsonStack.ps1"]
     LiteLLM["LiteLLM / ZeroTier proxy<br/>:4000"]
-    Llama["llama.cpp server<br/>Qwen36 model"]
+    Llama["llama.cpp server<br/>Qwen3.8 IQ3_S model"]
     Headroom["Headroom health service<br/>:8787"]
     Harness["Watson stack harness"]
 

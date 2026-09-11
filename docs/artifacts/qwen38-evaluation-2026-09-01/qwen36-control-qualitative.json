@@ -1,0 +1,56 @@
+{
+  "variant": "current",
+  "base_url": "http://127.0.0.1:8080/v1",
+  "model": "qwen36-turbo-hermes",
+  "generated_at": "2026-09-01T13:31:37.6244894+02:00",
+  "passed": 4,
+  "total": 5,
+  "total_elapsed_s": 12.054,
+  "rows": [
+    {
+      "case": "context_explanation",
+      "passed": true,
+      "reason": "words=73 runtime=True kv=True",
+      "elapsed_s": 2.592,
+      "word_count": 73,
+      "output": "Training on 262k tokens teaches long-range dependencies, but serving requires efficient inference. A 65,536-token window limits runtime KV-cache memory usage, preventing OOM errors on standard hardware. While the model understands longer contexts theoretically, practical deployment prioritizes latency and cost. Serving fewer tokens reduces VRAM pressure significantly, allowing higher throughput or larger batch sizes. Thus, operators often cap the context window to balance performance with available GPU memory, even if the model supports more.",
+      "error": ""
+    },
+    {
+      "case": "code_diagnosis_json",
+      "passed": true,
+      "reason": "strict JSON and corrected bound=True",
+      "elapsed_s": 1.095,
+      "word_count": 17,
+      "output": "{\n  \"bug\": \"IndexOutOfBoundsException\",\n  \"fix\": \"Change the loop condition from 'i <= items.length' to 'i < items.length'.\"\n}",
+      "error": ""
+    },
+    {
+      "case": "constraint_plan_json",
+      "passed": true,
+      "reason": "order=A,B,C,D",
+      "elapsed_s": 0.512,
+      "word_count": 1,
+      "output": "{\"order\":[\"A\",\"B\",\"C\",\"D\"]}",
+      "error": ""
+    },
+    {
+      "case": "uncertainty_restraint",
+      "passed": true,
+      "reason": "admits_unknown=True requests_evidence=True",
+      "elapsed_s": 3.988,
+      "word_count": 119,
+      "output": "I cannot provide the specific commit hash or file changes for a \"private nao repository\" because I do not have access to private repositories, nor is there any publicly available evidence linking a specific commit to a project named \"Universal Agentic Harness\" within a private repository owned by an entity referred to as \"nao.\"\n\nTo answer this question accurately, the following evidence would be required:\n1.  **Repository Access:** Direct read access to the private Git repository in question.\n2.  **Commit History:** The ability to query the repository's commit log (e.g., via `git log`) to identify commits containing keywords like \"Universal Agentic Harness.\"\n3.  **File Diff Data:** The specific diff output (`git show` or `git diff`) for the identified commit",
+      "error": ""
+    },
+    {
+      "case": "discord_response_style",
+      "passed": false,
+      "reason": "words=99 bullets=3 prefill=False measurements=True",
+      "elapsed_s": 3.867,
+      "word_count": 99,
+      "output": "*   **Bottleneck**: VRAM exhaustion. A 100k-token context requires massive KV cache storage; on a 16 GB GPU, this exceeds available memory, forcing aggressive offloading to system RAM or causing OOM crashes, which manifests as freezing.\n*   **Measurement 1**: Monitor VRAM usage via `nvidia-smi` during inference. Check if utilization hits 100% and if the process is swapping to CPU RAM, confirming memory pressure rather than compute latency.\n*   **Measurement 2**: Profile token generation speed (tokens/sec). If throughput drops near zero while VRAM is maxed out, it confirms paging/swapping overhead. Compare against baseline performance with shorter contexts to isolate memory-bound behavior.",
+      "error": ""
+    }
+  ]
+}

@@ -1,9 +1,9 @@
 param(
     [string]$LlamaBaseUrl = "http://127.0.0.1:8080/v1",
     [string]$LiteLLMBaseUrl = "http://127.0.0.1:4000/v1",
-    [string]$CodexProfilePath = "$env:USERPROFILE\.codex\qwen36-zerotier.config.toml",
-    [string]$Model = "qwen36-turbo-hermes",
-    [int]$ExpectedContextWindow = 65536,
+    [string]$CodexProfilePath = "$env:USERPROFILE\.codex\qwen38-zerotier.config.toml",
+    [string]$Model = "qwen3.8",
+    [int]$ExpectedContextWindow = 100096,
     [string]$ApiKey = "local-qwen36"
 )
 
@@ -81,4 +81,3 @@ if (-not $profileContext) {
 }
 
 Write-Host "Context mode check passed."
-

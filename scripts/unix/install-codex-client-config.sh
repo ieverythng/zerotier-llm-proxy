@@ -2,12 +2,19 @@
 set -euo pipefail
 
 BASE_URL="${LLM_PROXY_BASE_URL:-http://10.88.140.94:4000/v1}"
-CONTEXT_WINDOW="${LLM_CONTEXT_WINDOW:-65536}"
+LLAMA_BASE_URL="${LLAMA_CPP_BASE_URL:-http://172.24.16.1:8080/v1}"
+CONTEXT_WINDOW="${LLM_CONTEXT_WINDOW:-}"
+if [[ -z "$CONTEXT_WINDOW" ]] && command -v curl >/dev/null 2>&1; then
+  CONTEXT_WINDOW="$(curl -fsS --max-time 10 "$LLAMA_BASE_URL/models" 2>/dev/null \
+    | python3 -c 'import json,sys; d=json.load(sys.stdin); print(int((d.get("data") or [{}])[0].get("meta",{}).get("n_ctx",0)))' \
+    2>/dev/null || true)"
+fi
+CONTEXT_WINDOW="${CONTEXT_WINDOW:-65536}"
 MAX_CONTEXT_WINDOW="${LLM_MAX_CONTEXT_WINDOW:-$CONTEXT_WINDOW}"
 CONFIG_DIR="${CODEX_CONFIG_DIR:-$HOME/.codex}"
 CONFIG_FILE="${CODEX_CONFIG_FILE:-$CONFIG_DIR/config.toml}"
-PROFILE_FILE="${CODEX_PROFILE_FILE:-$CONFIG_DIR/qwen36-zerotier.config.toml}"
-CATALOG_FILE="${CODEX_MODEL_CATALOG_FILE:-$CONFIG_DIR/model-catalogs/qwen36-plus-bundled.json}"
+PROFILE_FILE="${CODEX_PROFILE_FILE:-$CONFIG_DIR/qwen38-zerotier.config.toml}"
+CATALOG_FILE="${CODEX_MODEL_CATALOG_FILE:-$CONFIG_DIR/model-catalogs/qwen38-plus-bundled.json}"
 
 mkdir -p "$CONFIG_DIR"
 umask 077
@@ -63,9 +70,9 @@ data = json.loads(source.read_text(encoding="utf-8"))
 base = dict(data["models"][0])
 base.update(
     {
-        "slug": "qwen36-turbo-hermes",
-        "display_name": "Qwen36 Turbo Hermes",
-        "description": "Windows-hosted qwen36-turbo-hermes served through ZeroTier LiteLLM.",
+        "slug": "qwen3.8",
+        "display_name": "Qwen3.8 (Watson)",
+        "description": "Windows-hosted Qwen3.8 served through ZeroTier LiteLLM; context is read from live llama.cpp metadata.",
         "default_reasoning_level": "low",
         "supported_reasoning_levels": [
             {"effort": "low", "description": "Fast responses with lighter reasoning"},
@@ -79,7 +86,7 @@ base.update(
         "max_context_window": max_context_window,
     }
 )
-data["models"] = [m for m in data["models"] if m.get("slug") != "qwen36-turbo-hermes"]
+data["models"] = [m for m in data["models"] if m.get("slug") not in {"qwen3.8", "qwen36-turbo-hermes"}]
 data["models"].append(base)
 target.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 PY
@@ -93,7 +100,7 @@ if [[ -e "$PROFILE_FILE" ]]; then
 fi
 
 cat > "$PROFILE_FILE" <<EOF
-model = "qwen36-turbo-hermes"
+model = "qwen3.8"
 model_provider = "qwen36-zerotier"
 model_context_window = $CONTEXT_WINDOW
 model_max_output_tokens = 8192

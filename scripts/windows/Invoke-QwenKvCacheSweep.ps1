@@ -10,9 +10,11 @@ param(
     [int]$MaxOutputTokens = 64,
     [int]$LlamaPort = 8080,
     [int]$LiteLLMPort = 4000,
-    [string]$Model = "qwen36-turbo-hermes",
+    [string]$Model = "qwen3.8",
+    [string]$ModelPath = "D:\MODELS\Qwen3.8-27B-UD-IQ3_S.gguf",
+    [string]$SourceBinDir = "C:\Users\Admin\PROJECTS\llama-b10621-win-cuda133",
     [string]$ApiKey = "local-qwen36",
-    [int]$RestoreContextSize = 65536,
+    [int]$RestoreContextSize = 100096,
     [switch]$SkipRestore
 )
 
@@ -20,12 +22,11 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $llamaRepo = "C:\Users\Admin\PROJECTS\llama-cpp-server"
-$sourceBinDir = "C:\Users\Admin\PROJECTS\llama-cpp-turboquant\build-cuda-faall\bin"
 $bridgeBinDir = Join-Path $llamaRepo "_tmp\llama-bin-wslbridge"
 $prepareScript = Join-Path $llamaRepo "scripts\prepare_wsl_bridge_bin.ps1"
 $startBgScript = Join-Path $llamaRepo "scripts\start_llama_server_bg.ps1"
 $stopScript = Join-Path $llamaRepo "scripts\stop_llama_server.ps1"
-$restoreScript = Join-Path $PSScriptRoot "Start-Qwen36ZeroTierStack.ps1"
+$restoreScript = Join-Path $PSScriptRoot "Start-WatsonStack.ps1"
 $measureScript = Join-Path $PSScriptRoot "Measure-Qwen36ProxyThroughput.ps1"
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $outDir = Join-Path $repoRoot "_tmp\bench\kv-sweep-$stamp"
@@ -107,6 +108,7 @@ function Start-TunedLlama {
         -BatchSize $Batch `
         -UBatchSize $UBatch `
         -Alias $Model `
+        -ModelPath $ModelPath `
         -BinDir $bridgeBinDir `
         -Metrics
 }
