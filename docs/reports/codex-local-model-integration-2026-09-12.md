@@ -107,3 +107,24 @@ Live acceptance additionally requires:
 - direct CLI chat through `qwen38-zerotier`;
 - a prompt from the restarted desktop app; and
 - an Ollama `/api/chat` response before treating Ollama as a ready fallback.
+
+## Verification record
+
+Completed on 2026-09-12:
+
+- Local `qwen38-watson` chat returned `OK` without the bridge.
+- Local `qwen38-watson` emitted a native shell call, Codex executed it, and the
+  model returned `WATSON_TOOL_OK`.
+- ZeroTier `qwen38-zerotier` chat returned `ZEROTIER_OK`.
+- ZeroTier `qwen38-zerotier` completed the same native shell loop and returned
+  `ZEROTIER_TOOL_OK`.
+- `Start-WatsonStack.ps1` restored llama.cpp at 100,096 context and passed both
+  bounded coherence probes after the Ollama experiment.
+- Windows Ollama 0.34.0 imported and loaded the model but failed the inference
+  gate with HTTP 500; it is not ready for routing.
+
+The running desktop app process was started before the corrected catalog was
+installed. Its subagent dispatcher therefore still rejected `qwen3.8` with the
+old ChatGPT-account error, proving that catalog changes are loaded at app
+startup. Desktop Watson mode is configured on disk, but final UI prompt and
+subagent gates require one full app restart.
