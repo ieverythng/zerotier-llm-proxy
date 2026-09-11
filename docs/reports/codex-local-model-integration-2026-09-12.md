@@ -121,7 +121,9 @@ Completed on 2026-09-12:
 - `Start-WatsonStack.ps1` restored llama.cpp at 100,096 context and passed both
   bounded coherence probes after the Ollama experiment.
 - Windows Ollama 0.34.0 imported and loaded the model but failed the inference
-  gate with HTTP 500; it is not ready for routing.
+  gate with HTTP 500; it is not ready for routing. The failed import was removed
+  afterward to reclaim Ollama's duplicate 12 GB blob; the source GGUF and
+  Modelfile remain available for a future runner retest.
 
 The running desktop app process was started before the corrected catalog was
 installed. Its subagent dispatcher therefore still rejected `qwen3.8` with the
