@@ -120,26 +120,35 @@ Responses endpoints expect top-level tools instead.
 
 ### Codex/ChatGPT desktop app
 
-The desktop app supports local models through its API-mode base URL, which is
-the same public configuration seam used by `ollama launch chatgpt`. Configure
-the app to use the proper Watson stack with:
+The desktop app uses one provider route for a running instance. The Watson
+integration follows Ollama's model-router design: one loopback route sends only
+`qwen3.8` to LiteLLM and forwards bundled models to the native ChatGPT Codex
+backend. Install the Watson-enabled shortcut with:
 
 ```powershell
-.\scripts\windows\Install-CodexQwen38WatsonProfile.ps1
-.\scripts\windows\Set-CodexDesktopWatson.ps1
+.\scripts\windows\Install-CodexWatsonShortcut.ps1
 ```
 
-Restart the app after switching. The script keeps one restore copy of the user
-configuration; return to the normal ChatGPT-hosted route with:
+The `Codex - Watson Enabled` desktop shortcut defaults to GPT-5.6 and retains
+the bundled hosted model picker while adding Qwen3.8. Watson runs through
+LiteLLM on port 4000; the loopback-only selector listens on port 4010. The app
+shortcut creates a fresh `config.before-watson-router.toml` recovery copy before
+atomically installing the catalog and route into `~/.codex/config.toml`. Close
+an already-running Codex window before using the shortcut because the model
+catalog is loaded at startup. Restore the exact pre-Watson configuration with:
 
 ```powershell
-.\scripts\windows\Set-CodexDesktopWatson.ps1 -Restore
+.\scripts\windows\Set-CodexDesktopWatson.ps1 `
+  -CodexHome "$env:USERPROFILE\.codex" -Restore
 ```
 
-Desktop mode removes the explicit `model_provider` and sets the top-level
-`openai_base_url`, as required by the app's API-key request path. It refuses to
-activate unless the selected catalog model is marked API-capable and is not a
-Responses-Lite model.
+The router accepts loopback traffic only and strips ChatGPT credentials before
+forwarding Qwen requests to LiteLLM. Hosted model requests retain their native
+ChatGPT account route.
+
+Headroom remains correct for Hermes chat traffic, but Codex's full Responses
+request currently fails through Headroom while the same request passes through
+LiteLLM. The desktop shortcut therefore uses the proven LiteLLM route.
 
 ### Ollama fallback
 

@@ -1,16 +1,24 @@
 [CmdletBinding(DefaultParameterSetName = "Enable")]
 param(
-    [string]$CodexHome = "$env:USERPROFILE\.codex",
+    # Never default to the primary Codex home. Desktop local-model routing is
+    # global within one Codex home, so changing ~/.codex breaks hosted models.
+    [string]$CodexHome = "$env:USERPROFILE\.codex-watson",
     [string]$BaseUrl = "http://127.0.0.1:4000/v1",
     [string]$ModelSlug = "qwen3.8",
-    [int]$ContextWindow = 100096,
+    [string]$DefaultModel = "gpt-5.6-sol",
+    [switch]$SkipBackup,
     [Parameter(ParameterSetName = "Restore", Mandatory)]
     [switch]$Restore
 )
 
 $ErrorActionPreference = "Stop"
 $configPath = Join-Path $CodexHome "config.toml"
-$backupPath = Join-Path $CodexHome "config.before-watson-desktop.toml"
+$backupPath = Join-Path $CodexHome "config.before-watson-router.toml"
+
+function Write-Utf8NoBom {
+    param([string]$Path, [string]$Text)
+    [IO.File]::WriteAllText($Path, $Text, (New-Object Text.UTF8Encoding($false)))
+}
 
 function Set-OrInsertTopLevel {
     param([string]$Text, [string]$Key, [string]$Value)
@@ -34,11 +42,10 @@ if ($Restore) {
     }
     Copy-Item -LiteralPath $backupPath -Destination $configPath -Force
     Remove-Item -LiteralPath $backupPath -Force
-    Write-Output "Restored Codex desktop configuration. Restart the app to reconnect to ChatGPT-hosted models."
+    Write-Output "Restored the pre-Watson Codex configuration."
     return
 }
 
-if ($ContextWindow -lt 8192) { throw "ContextWindow must be at least 8192." }
 if (-not (Test-Path -LiteralPath $configPath)) { throw "Codex config not found: $configPath" }
 
 $configText = Get-Content -Raw -LiteralPath $configPath
@@ -54,7 +61,7 @@ if ($model.Count -ne 1 -or -not $model[0].supported_in_api -or $model[0].use_res
     throw "The '$ModelSlug' catalog entry is not desktop-safe. Re-run Install-CodexQwen38WatsonProfile.ps1."
 }
 
-if (-not (Test-Path -LiteralPath $backupPath)) {
+if (-not $SkipBackup -and -not (Test-Path -LiteralPath $backupPath)) {
     Copy-Item -LiteralPath $configPath -Destination $backupPath
 }
 
@@ -62,10 +69,10 @@ if (-not (Test-Path -LiteralPath $backupPath)) {
 # API-mode models use a top-level base URL and must not pin model_provider.
 $configText = Remove-TopLevel -Text $configText -Key "model_provider"
 $configText = Set-OrInsertTopLevel -Text $configText -Key "openai_base_url" -Value ('"' + $BaseUrl.TrimEnd('/') + '"')
-$configText = Set-OrInsertTopLevel -Text $configText -Key "model" -Value ('"' + $ModelSlug + '"')
-$configText = Set-OrInsertTopLevel -Text $configText -Key "model_context_window" -Value $ContextWindow
-$configText = Set-OrInsertTopLevel -Text $configText -Key "model_max_output_tokens" -Value 8192
-Set-Content -LiteralPath $configPath -Value $configText -Encoding UTF8
+$configText = Set-OrInsertTopLevel -Text $configText -Key "model" -Value ('"' + $DefaultModel + '"')
+$configText = Remove-TopLevel -Text $configText -Key "model_context_window"
+$configText = Remove-TopLevel -Text $configText -Key "model_max_output_tokens"
+Write-Utf8NoBom -Path $configPath -Text ($configText.TrimEnd() + "`r`n")
 
-Write-Output "Watson desktop mode configured. Restart the Codex/ChatGPT app to load '$ModelSlug'."
+Write-Output "Watson-enabled desktop mode configured with hosted default '$DefaultModel' and local model '$ModelSlug'."
 Write-Output "Restore later with: .\scripts\windows\Set-CodexDesktopWatson.ps1 -Restore"

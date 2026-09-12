@@ -13,6 +13,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Write-Utf8NoBom {
+    param([string]$Path, [string]$Text)
+    [IO.File]::WriteAllText($Path, $Text, (New-Object Text.UTF8Encoding($false)))
+}
+
 function Set-Or-InsertTopLevel {
     param([string]$Text, [string]$Key, [string]$Value)
 
@@ -60,7 +65,7 @@ base_url = "$BaseUrl"
 wire_api = "responses"
 "@
 $configText = [regex]::Replace($configText, "(?ms)\r?\n?\[model_providers\.$([regex]::Escape($ProviderName))\].*?(?=\r?\n\[[^\]]+\]|\z)", "")
-Set-Content -LiteralPath $configPath -Value ($configText.TrimEnd() + $providerBlock + "`r`n") -Encoding UTF8
+Write-Utf8NoBom -Path $configPath -Text ($configText.TrimEnd() + $providerBlock + "`r`n")
 
 $bundledJson = (& codex debug models --bundled 2>$null) -join "`n"
 if (-not $bundledJson.TrimStart().StartsWith('{')) {
@@ -94,7 +99,7 @@ $base.context_window = $contextWindow
 $base.max_context_window = $contextWindow
 $catalog.models = @($catalog.models | Where-Object { $_.slug -notin @($ModelSlug, "qwen36-turbo-hermes") }) + $base
 New-Item -ItemType Directory -Force -Path $catalogDir | Out-Null
-$catalog | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $catalogPath -Encoding UTF8
+Write-Utf8NoBom -Path $catalogPath -Text (($catalog | ConvertTo-Json -Depth 30) + "`r`n")
 
 $profile = @"
 model = "$ModelSlug"
@@ -102,7 +107,7 @@ model_provider = "$ProviderName"
 model_context_window = $contextWindow
 model_max_output_tokens = 8192
 "@
-Set-Content -LiteralPath $profilePath -Value ($profile.TrimStart() + "`r`n") -Encoding UTF8
+Write-Utf8NoBom -Path $profilePath -Text ($profile.TrimStart() + "`r`n")
 
 # Keep an existing compatibility profile's context truthful without changing
 # the model slug it was created for.
@@ -113,7 +118,7 @@ if ($CompatibilityProfileName -and (Test-Path -LiteralPath $compatibilityProfile
     if ($compatText -match "(?m)^model_context_window\s*=") {
         $compatText = [regex]::Replace($compatText, "(?m)^model_context_window\s*=.*$", "model_context_window = $contextWindow", 1)
     }
-    Set-Content -LiteralPath $compatibilityProfilePath -Value $compatText -Encoding UTF8
+    Write-Utf8NoBom -Path $compatibilityProfilePath -Text $compatText
 }
 
 if ($SetDefault) {
@@ -122,7 +127,7 @@ if ($SetDefault) {
     $defaultText = Set-Or-InsertTopLevel -Text $defaultText -Key "model_provider" -Value ('"' + $ProviderName + '"')
     $defaultText = Set-Or-InsertTopLevel -Text $defaultText -Key "model_context_window" -Value $contextWindow
     $defaultText = Set-Or-InsertTopLevel -Text $defaultText -Key "model_max_output_tokens" -Value "8192"
-    Set-Content -LiteralPath $configPath -Value $defaultText -Encoding UTF8
+    Write-Utf8NoBom -Path $configPath -Text $defaultText
 }
 
 [pscustomobject]@{
