@@ -8,11 +8,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if (-not $ShortcutPath) {
+    $shellDesktop = [Environment]::GetFolderPath('Desktop')
     $localDesktop = Join-Path $env:USERPROFILE 'Desktop'
-    $desktop = if (Test-Path -LiteralPath $localDesktop) {
+    $desktop = if ($shellDesktop -and (Test-Path -LiteralPath $shellDesktop)) {
+        $shellDesktop
+    } elseif (Test-Path -LiteralPath $localDesktop) {
         $localDesktop
     } else {
-        [Environment]::GetFolderPath('Desktop')
+        throw 'Windows Desktop folder could not be resolved.'
     }
     $ShortcutPath = Join-Path $desktop 'Codex - Watson Enabled.lnk'
 }
@@ -26,22 +29,49 @@ if (-not (Test-Path -LiteralPath (Join-Path $CodexHome 'config.toml'))) {
     throw "Codex config not found under '$CodexHome'."
 }
 
-$package = Get-AppxPackage -Name 'OpenAI.Codex' -ErrorAction SilentlyContinue |
-    Sort-Object Version -Descending |
-    Select-Object -First 1
+$package = $null
+try {
+    $package = Get-AppxPackage -Name 'OpenAI.Codex' -ErrorAction Stop |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+} catch {
+    if ($PSVersionTable.PSEdition -eq 'Core') {
+        $windowsPowerShell = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+        $installLocation = & $windowsPowerShell -NoProfile -Command `
+            "(Get-AppxPackage -Name 'OpenAI.Codex' | Sort-Object Version -Descending | Select-Object -First 1).InstallLocation"
+        if ($LASTEXITCODE -eq 0 -and $installLocation) {
+            $package = [pscustomobject]@{ InstallLocation = $installLocation.Trim() }
+        }
+    }
+}
 if (-not $package) { throw 'The Codex desktop app package is not installed.' }
 $iconPath = Join-Path $package.InstallLocation 'app\ChatGPT.exe'
 
 $powershell = (Get-Command powershell.exe -ErrorAction Stop).Source
 $arguments = '-NoProfile -ExecutionPolicy Bypass -File "{0}" -CodexHome "{1}" -RouterBaseUrl "{2}" -LiteLlmBaseUrl "{3}"' -f $launcher, $CodexHome, $RouterBaseUrl, $LiteLlmBaseUrl
 $shell = New-Object -ComObject WScript.Shell
-$shortcut = $shell.CreateShortcut($ShortcutPath)
-$shortcut.TargetPath = $powershell
-$shortcut.Arguments = $arguments
-$shortcut.WorkingDirectory = Split-Path $launcher -Parent
-$shortcut.IconLocation = "$iconPath,0"
-$shortcut.Description = 'Codex with hosted models plus local Watson through a safe model router'
-$shortcut.Save()
+$buildPath = $ShortcutPath
+$copyAfterBuild = $ShortcutPath -match '[^\x00-\x7F]'
+if ($copyAfterBuild) {
+    $buildPath = Join-Path $env:TEMP "Codex-Watson-Shortcut-$PID.lnk"
+}
+
+try {
+    $shortcut = $shell.CreateShortcut($buildPath)
+    $shortcut.TargetPath = $powershell
+    $shortcut.Arguments = $arguments
+    $shortcut.WorkingDirectory = Split-Path $launcher -Parent
+    $shortcut.IconLocation = "$iconPath,0"
+    $shortcut.Description = 'Codex with hosted models plus local Watson through a safe model router'
+    $shortcut.Save()
+    if ($copyAfterBuild) {
+        Copy-Item -LiteralPath $buildPath -Destination $ShortcutPath -Force
+    }
+} finally {
+    if ($copyAfterBuild -and (Test-Path -LiteralPath $buildPath)) {
+        Remove-Item -LiteralPath $buildPath -Force
+    }
+}
 
 [pscustomobject]@{
     shortcut = $ShortcutPath
