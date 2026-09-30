@@ -22,6 +22,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $utf8NoBom = New-Object Text.UTF8Encoding($false)
+if (-not $Json) {
+    try { $Host.UI.RawUI.WindowTitle = 'Watson Traffic Monitor' } catch { }
+}
 $taskHistory = New-Object Collections.Generic.List[object]
 $lastTaskId = $null
 $sampleCount = 0
