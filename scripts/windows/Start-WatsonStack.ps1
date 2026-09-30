@@ -33,6 +33,7 @@ param(
     [string]$BackendKey = "llama.cpp",
     [switch]$Metrics,
     [switch]$SkipChatParsing,
+    [switch]$SkipCoherenceCheck,
     [switch]$SkipLlamaStart,
     [switch]$ReplaceLiteLLM,
     [switch]$NoHeadroom,
@@ -384,8 +385,13 @@ if (-not $SkipLlamaStart) {
     }
 }
 
-Write-Step 'Checking bounded, coherent chat generation'
-& (Join-Path $PSScriptRoot 'Test-WatsonChatHealth.ps1') -BaseUrl $llamaBaseUrl -Model $ServedAlias | Out-Host
+if ($SkipCoherenceCheck) {
+    Write-Warn 'Skipping the bounded chat coherence gate by request.'
+} else {
+    Write-Step 'Checking bounded, coherent chat generation'
+    Write-Warn 'This gate performs two real model generations and will briefly raise GPU utilization.'
+    & (Join-Path $PSScriptRoot 'Test-WatsonChatHealth.ps1') -BaseUrl $llamaBaseUrl -Model $ServedAlias | Out-Host
+}
 
 # ─── Phase 2: LiteLLM Proxy ─────────────────────────────────────
 $litellmBaseUrl = "http://127.0.0.1:$LiteLLMPort/v1"

@@ -20,9 +20,11 @@ if ($upstreamUrl -ne "http://127.0.0.1:4000/v1") {
     throw "Headroom upstream is not the expected LiteLLM endpoint: $upstreamUrl"
 }
 try {
-    $upstreamHealth = Invoke-RestMethod -Uri "http://127.0.0.1:4000/health" -TimeoutSec 5
+    # LiteLLM's /health performs an upstream completion. Model discovery is a
+    # passive readiness check and must not wake llama.cpp just to show status.
+    $upstreamHealth = Invoke-RestMethod -Uri "http://127.0.0.1:4000/v1/models" -TimeoutSec 5
 } catch {
-    throw "LiteLLM upstream health endpoint is unavailable."
+    throw "LiteLLM upstream model discovery is unavailable."
 }
 
 try {

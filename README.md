@@ -270,6 +270,7 @@ compatibility wrapper and its matching profile:
 | Script | Purpose |
 |--------|---------|
 | `Start-WatsonStack.ps1` | Canonical generic startup: llama.cpp + LiteLLM + Headroom + optional Oracle |
+| `Watch-WatsonTraffic.ps1` | Passive live GPU, llama slot, service, and caller/route monitor |
 | `Start-Lucebox65kStack.ps1` | Lucebox/DFlash + proxy + LiteLLM, recommended 65k context profile |
 | `Start-Lucebox128kStack.ps1` | Lucebox/DFlash + proxy + LiteLLM, experimental 128k context profile |
 | `Start-LuceboxZeroTierStack.ps1` | Parameterized Lucebox/DFlash stack launcher |
@@ -282,6 +283,19 @@ compatibility wrapper and its matching profile:
 | `Measure-Qwen36ProxyThroughput.ps1` | Benchmark throughput metrics |
 | `Invoke-QwenContextSweep.ps1` | Sweep test across context sizes |
 | `Compare-QwenSweepResults.ps1` | Compare benchmark results |
+
+To see whether GPU activity is real inference and which process or remote host
+is connected to each layer, run the passive traffic monitor in another terminal:
+
+```powershell
+.\scripts\windows\Watch-WatsonTraffic.ps1
+```
+
+It polls llama.cpp `/slots` and Windows TCP state. It deliberately does not call
+LiteLLM `/health`, because that endpoint performs a real upstream model probe.
+The normal launcher also performs two bounded coherence generations after
+llama.cpp starts; use `-SkipCoherenceCheck` only when a quiet startup is more
+important than validating model output.
 
 ## Project Structure
 
