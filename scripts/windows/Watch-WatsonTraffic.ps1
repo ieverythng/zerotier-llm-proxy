@@ -9,12 +9,15 @@ param(
     [int]$HistorySize = 10,
     [ValidateRange(0, 1000000)]
     [int]$MaxSamples = 0,
+    [ValidateRange(0, 300)]
+    [int]$FrameWidth = 0,
     [string]$WslDistribution = 'Ubuntu',
     [string]$LogPath = '',
     [switch]$Once,
     [switch]$Json,
     [switch]$NoClear,
-    [switch]$NoWslResolution
+    [switch]$NoWslResolution,
+    [switch]$Demo
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,7 +27,7 @@ $lastTaskId = $null
 $sampleCount = 0
 $processLabelCache = @{}
 $wslAddresses = @()
-if (-not $NoWslResolution -and (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
+if (-not $Demo -and -not $NoWslResolution -and (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
     try {
         $runningDistributions = @(& wsl.exe --list --running --quiet 2>$null)
         if ($runningDistributions -contains $WslDistribution) {
@@ -181,73 +184,200 @@ function Get-WatsonSnapshot {
     }
 }
 
-function Write-WatsonDashboard {
-    param($Snapshot, [object[]]$RecentTasks)
+function Get-DemoSnapshot {
+    return [ordered]@{
+        timestamp = (Get-Date).ToString('o')
+        gpu = [ordered]@{
+            utilization_percent = 73
+            memory_used_mib = 15742
+            memory_total_mib = 16303
+            power_watts = 238.4
+        }
+        llama_slot = [ordered]@{
+            id = 0
+            context_tokens = 100096
+            is_processing = $true
+            task_id = 4202
+            prompt_tokens = 38124
+            prompt_tokens_processed = 256
+            prompt_tokens_cached = 37682
+            max_output_tokens = -1
+            decoded_tokens = 144
+        }
+        services = @(
+            [ordered]@{ name = 'Headroom'; port = 8787; listening = $true; process_id = 120; process = 'Headroom' },
+            [ordered]@{ name = 'LiteLLM'; port = 4000; listening = $true; process_id = 220; process = 'LiteLLM' },
+            [ordered]@{ name = 'llama.cpp'; port = 8080; listening = $true; process_id = 320; process = 'llama-server.exe' }
+        )
+        active_routes = @(
+            [ordered]@{ target = 'Headroom'; target_port = 8787; source = 'hermes (WSL pid 17876)'; source_address = '172.24.31.12'; source_port = 50123; kind = 'remote-client' },
+            [ordered]@{ target = 'LiteLLM'; target_port = 4000; source = 'Headroom'; source_address = '127.0.0.1'; source_port = 50124; kind = 'local-client' },
+            [ordered]@{ target = 'llama.cpp'; target_port = 8080; source = 'LiteLLM'; source_address = '127.0.0.1'; source_port = 50125; kind = 'local-client' }
+        )
+    }
+}
 
-    if (-not $NoClear) { Clear-Host }
-    Write-Host 'WATSON TRAFFIC MONITOR' -ForegroundColor Cyan
-    Write-Host (Get-Date $Snapshot.timestamp -Format 'yyyy-MM-dd HH:mm:ss') -ForegroundColor DarkGray
-    Write-Host ''
+function New-DashboardLine {
+    param([string]$Text = '', [string]$Color = 'Default')
+    return [pscustomobject]@{ Text = $Text; Color = $Color }
+}
+
+function Get-DashboardWidth {
+    if ($FrameWidth -gt 0) { return [Math]::Max(48, [Math]::Min(300, $FrameWidth)) }
+    $candidate = 100
+    try {
+        if ([Console]::WindowWidth -gt 0) { $candidate = [Console]::WindowWidth }
+    } catch {
+        try { $candidate = $Host.UI.RawUI.WindowSize.Width } catch { }
+    }
+    return [Math]::Max(48, [Math]::Min(160, $candidate))
+}
+
+function Get-CompactSourceLabel {
+    param([string]$Source)
+    return ($Source -replace ' \(WSL pid (\d+)\)', '[wsl:$1]')
+}
+
+function Get-DashboardLines {
+    param($Snapshot, [object[]]$RecentTasks, [int]$Width)
+
+    $lines = New-Object Collections.Generic.List[object]
+    $slot = $Snapshot.llama_slot
+    $slotState = if (-not $slot) { 'OFFLINE' } elseif ($slot.is_processing) { 'ACTIVE' } else { 'IDLE' }
+    $slotColor = if (-not $slot) { 'Red' } elseif ($slot.is_processing) { 'Green' } else { 'Gray' }
+    $timestamp = Get-Date $Snapshot.timestamp -Format 'HH:mm:ss'
+    [void]$lines.Add((New-DashboardLine -Text ("WATSON TRAFFIC  {0}  [{1}]" -f $timestamp, $slotState) -Color 'Cyan'))
+    [void]$lines.Add((New-DashboardLine -Text ('-' * [Math]::Min(72, $Width - 1)) -Color 'Gray'))
 
     if ($Snapshot.gpu) {
-        $blocks = [Math]::Min(20, [Math]::Floor($Snapshot.gpu.utilization_percent / 5))
-        $bar = ('#' * $blocks).PadRight(20, '.')
-        Write-Host ("GPU  [{0}] {1,3}%   VRAM {2}/{3} MiB   {4:N1} W" -f `
-            $bar, $Snapshot.gpu.utilization_percent, $Snapshot.gpu.memory_used_mib, `
-            $Snapshot.gpu.memory_total_mib, $Snapshot.gpu.power_watts)
+        $barWidth = [Math]::Max(8, [Math]::Min(16, $Width - 48))
+        $filled = [Math]::Min($barWidth, [Math]::Floor($Snapshot.gpu.utilization_percent * $barWidth / 100))
+        $bar = ('#' * $filled).PadRight($barWidth, '.')
+        $usedGb = $Snapshot.gpu.memory_used_mib / 1024
+        $totalGb = $Snapshot.gpu.memory_total_mib / 1024
+        [void]$lines.Add((New-DashboardLine -Text ("GPU [{0}] {1,3}% | VRAM {2:N1}/{3:N1} GB | {4:N0} W" -f `
+            $bar, $Snapshot.gpu.utilization_percent, $usedGb, $totalGb, $Snapshot.gpu.power_watts)))
     } else {
-        Write-Host 'GPU  unavailable' -ForegroundColor Yellow
+        [void]$lines.Add((New-DashboardLine -Text 'GPU unavailable' -Color 'Yellow'))
     }
 
-    $slot = $Snapshot.llama_slot
     if ($slot) {
-        $state = if ($slot.is_processing) { 'GENERATING' } else { 'idle' }
-        $color = if ($slot.is_processing) { 'Green' } else { 'DarkGray' }
-        Write-Host ("Slot {0}: {1} | task {2} | prompt {3} tok | decoded {4} tok | context {5}" -f `
-            $slot.id, $state, $slot.task_id, $slot.prompt_tokens, $slot.decoded_tokens, $slot.context_tokens) `
-            -ForegroundColor $color
+        if ($Width -lt 64) {
+            [void]$lines.Add((New-DashboardLine -Text ("MODEL task {0} | {1}" -f $slot.task_id, $slotState) -Color $slotColor))
+            [void]$lines.Add((New-DashboardLine -Text ("prompt {0:N0} | out {1:N0} | ctx {2:N0}" -f `
+                $slot.prompt_tokens, $slot.decoded_tokens, $slot.context_tokens) -Color $slotColor))
+        } else {
+            [void]$lines.Add((New-DashboardLine -Text ("MODEL task {0} | prompt {1:N0} | out {2:N0} | ctx {3:N0}" -f `
+                $slot.task_id, $slot.prompt_tokens, $slot.decoded_tokens, $slot.context_tokens) -Color $slotColor))
+        }
+        if ($slot.is_processing) {
+            [void]$lines.Add((New-DashboardLine -Text ("CACHE {0:N0} reused | {1:N0} processed" -f `
+                $slot.prompt_tokens_cached, $slot.prompt_tokens_processed) -Color 'Gray'))
+        }
     } else {
-        Write-Host 'llama.cpp slots endpoint unavailable' -ForegroundColor Red
+        [void]$lines.Add((New-DashboardLine -Text 'MODEL llama.cpp slots unavailable' -Color 'Red'))
     }
 
-    Write-Host ''
-    Write-Host 'SERVICES' -ForegroundColor Cyan
-    foreach ($service in $Snapshot.services) {
-        $state = if ($service.listening) { 'LISTENING' } else { 'DOWN' }
-        $color = if ($service.listening) { 'Green' } else { 'Red' }
-        Write-Host ("  {0,-10} :{1,-5} {2,-9} {3}" -f $service.name, $service.port, $state, $service.process) -ForegroundColor $color
+    [void]$lines.Add((New-DashboardLine))
+    [void]$lines.Add((New-DashboardLine -Text 'PIPELINE' -Color 'Cyan'))
+    $serviceParts = foreach ($service in $Snapshot.services) {
+        $state = if ($service.listening) { 'UP' } else { 'DOWN' }
+        '{0}:{1} {2}' -f $service.name, $service.port, $state
+    }
+    $servicesColor = if (@($Snapshot.services | Where-Object { -not $_.listening }).Count -gt 0) { 'Red' } else { 'Green' }
+    if ($Width -lt 64) {
+        foreach ($servicePart in $serviceParts) {
+            [void]$lines.Add((New-DashboardLine -Text $servicePart -Color $servicesColor))
+        }
+    } else {
+        [void]$lines.Add((New-DashboardLine -Text ($serviceParts -join ' | ') -Color $servicesColor))
     }
 
-    Write-Host ''
-    Write-Host 'ACTIVE CONNECTIONS' -ForegroundColor Cyan
     if ($Snapshot.active_routes.Count -eq 0) {
-        Write-Host '  No active client connections.' -ForegroundColor DarkGray
+        [void]$lines.Add((New-DashboardLine -Text 'No active request path.' -Color 'Gray'))
     } else {
         foreach ($route in $Snapshot.active_routes) {
-            Write-Host ("  {0} [{1}:{2}] -> {3}:{4}" -f `
-                $route.source, $route.source_address, $route.source_port, $route.target, $route.target_port)
+            $source = Get-CompactSourceLabel -Source $route.source
+            $address = if ($Width -ge 64 -and $route.kind -eq 'remote-client') { " [$($route.source_address)]" } else { '' }
+            [void]$lines.Add((New-DashboardLine -Text ("  {0}{1} -> {2}:{3}" -f `
+                $source, $address, $route.target, $route.target_port)))
         }
     }
     if ($slot -and -not $slot.is_processing -and $Snapshot.active_routes.Count -gt 0) {
-        Write-Host '  Slot is idle; listed sockets may be keep-alive or passive probes.' -ForegroundColor DarkGray
+        [void]$lines.Add((New-DashboardLine -Text 'Slot idle: connections are keep-alive or passive probes.' -Color 'Gray'))
     }
 
-    if ($RecentTasks.Count -gt 0) {
-        Write-Host ''
-        Write-Host 'RECENT LLAMA TASK CHANGES' -ForegroundColor Cyan
-        foreach ($task in $RecentTasks) {
-            Write-Host ("  {0} task={1} prompt={2} processing={3}" -f `
-                $task.timestamp, $task.task_id, $task.prompt_tokens, $task.is_processing)
+    [void]$lines.Add((New-DashboardLine))
+    [void]$lines.Add((New-DashboardLine -Text 'RECENT TASKS' -Color 'Cyan'))
+    $shownTasks = @($RecentTasks | Select-Object -Last 4)
+    if ($shownTasks.Count -eq 0) {
+        [void]$lines.Add((New-DashboardLine -Text 'No task changes since monitor start.' -Color 'Gray'))
+    } else {
+        foreach ($task in $shownTasks) {
+            $state = if ($task.is_processing) { 'ACTIVE' } else { 'IDLE' }
+            [void]$lines.Add((New-DashboardLine -Text ("{0}  task {1}  prompt {2:N0}  {3}" -f `
+                $task.timestamp, $task.task_id, $task.prompt_tokens, $state)))
         }
     }
 
-    Write-Host ''
-    Write-Host 'Passive monitor: /slots + OS sockets only. Do not monitor LiteLLM with /health; it runs inference.' -ForegroundColor Yellow
-    Write-Host 'Press Ctrl+C to stop.' -ForegroundColor DarkGray
+    [void]$lines.Add((New-DashboardLine))
+    $passiveNote = if ($Width -lt 64) {
+        'Passive monitor; LiteLLM /health is avoided.'
+    } else {
+        'Passive: /slots + TCP. LiteLLM /health is never called.'
+    }
+    [void]$lines.Add((New-DashboardLine -Text $passiveNote -Color 'Yellow'))
+    [void]$lines.Add((New-DashboardLine -Text 'Ctrl+C to stop.' -Color 'Gray'))
+    return $lines.ToArray()
+}
+
+function Limit-DashboardText {
+    param([string]$Text, [int]$Width)
+    $singleLine = ([string]$Text) -replace '[\r\n]+', ' '
+    if ($singleLine.Length -le $Width) { return $singleLine }
+    return $singleLine.Substring(0, [Math]::Max(0, $Width - 1)) + '~'
+}
+
+function Get-AnsiColorCode {
+    param([string]$Color)
+    switch ($Color) {
+        'Cyan' { return '96' }
+        'Green' { return '92' }
+        'Yellow' { return '93' }
+        'Red' { return '91' }
+        'Gray' { return '90' }
+        default { return '0' }
+    }
+}
+
+function Write-DashboardFrame {
+    param([object[]]$Lines, [int]$Width)
+
+    $contentWidth = [Math]::Max(47, $Width - 1)
+    $plainLines = @($Lines | ForEach-Object { Limit-DashboardText -Text $_.Text -Width $contentWidth })
+    if ($NoClear -or [Console]::IsOutputRedirected) {
+        Write-Output ($plainLines -join [Environment]::NewLine)
+        return
+    }
+
+    $escape = [char]27
+    $rendered = for ($index = 0; $index -lt $Lines.Count; $index++) {
+        $code = Get-AnsiColorCode -Color $Lines[$index].Color
+        $text = $plainLines[$index].PadRight($contentWidth)
+        "$escape[$($code)m$text$escape[0m"
+    }
+    $frame = "$escape[?25l$escape[2J$escape[H" + ($rendered -join "`r`n") + "$escape[?25h"
+    [Console]::Write($frame)
+}
+
+if ($Demo) {
+    [void]$taskHistory.Add([ordered]@{ timestamp = '11:18:04'; task_id = 4200; prompt_tokens = 36214; is_processing = $true })
+    [void]$taskHistory.Add([ordered]@{ timestamp = '11:18:31'; task_id = 4201; prompt_tokens = 37482; is_processing = $true })
+    $lastTaskId = 4201
 }
 
 do {
-    $snapshot = Get-WatsonSnapshot
+    $snapshot = if ($Demo) { Get-DemoSnapshot } else { Get-WatsonSnapshot }
     if ($snapshot.llama_slot -and $snapshot.llama_slot.task_id -ne $lastTaskId) {
         if ($null -ne $lastTaskId) {
             $taskHistory.Add([ordered]@{
@@ -272,7 +402,9 @@ do {
     if ($Json) {
         Write-Output $jsonLine
     } else {
-        Write-WatsonDashboard -Snapshot $snapshot -RecentTasks $taskHistory.ToArray()
+        $width = Get-DashboardWidth
+        $lines = Get-DashboardLines -Snapshot $snapshot -RecentTasks $taskHistory.ToArray() -Width $width
+        Write-DashboardFrame -Lines $lines -Width $width
     }
     $sampleCount++
     $finished = $Once -or ($MaxSamples -gt 0 -and $sampleCount -ge $MaxSamples)

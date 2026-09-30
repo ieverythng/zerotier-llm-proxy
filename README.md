@@ -293,6 +293,13 @@ is connected to each layer, run the passive traffic monitor in another terminal:
 
 It polls llama.cpp `/slots` and Windows TCP state. It deliberately does not call
 LiteLLM `/health`, because that endpoint performs a real upstream model probe.
+The display redraws as one width-bounded frame and switches to a stacked layout
+in narrow terminals. Preview that layout without a running stack with:
+
+```powershell
+.\scripts\windows\Watch-WatsonTraffic.ps1 -Demo -Once -NoClear -FrameWidth 72
+```
+
 The normal launcher also performs two bounded coherence generations after
 llama.cpp starts; use `-SkipCoherenceCheck` only when a quiet startup is more
 important than validating model output.
