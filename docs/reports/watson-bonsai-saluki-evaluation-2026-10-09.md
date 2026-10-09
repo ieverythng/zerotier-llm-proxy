@@ -10,7 +10,9 @@ Bonsai is now the live Hermes candidate. It loaded at a 100,096-token context
 allocation, passed an authenticated Headroom/LiteLLM SSE canary, and left about
 4.7 GiB free VRAM. Qwen3.8 was not loaded or queried. This is a safe-fit and
 route check, not a final quality/performance promotion: there was no matched
-Saluki comparison or near-100k-token prompt, and no tool or vision suite was run.
+Saluki comparison or near-100k-token prompt, and only one routed tool call plus
+one basic Saluki image-read probe were run. Those probes do not constitute the
+planned multi-item tool/vision quality suite.
 
 The existing Bonsai evaluation remains relevant: Bonsai is much faster at
 decode and has considerably more spare VRAM, but it failed one of four routed
@@ -36,6 +38,15 @@ request measured 1,416.7 tok/s prefill and 61.22 tok/s decode over 30 output
 tokens. The 748-token image request measured 940.4 tok/s prefill and
 60.99 tok/s decode over 36 output tokens, and correctly read the supplied
 image. These short samples are not full-context performance claims.
+
+The retained Saluki startup log also warns that Qwen-VL grounding tasks need at
+least 1,024 image tokens and suggests `--image-min-tokens 1024`; the installed
+b11433 binary accepts that option. The previous image probe used the launcher's
+default and is only basic image-read evidence, not a validated grounding test
+at the recommended floor. A future controlled vision ablation should compare
+the default against 1,024, record minimum VRAM during the request, and reject a
+setting that drops below the 2,048 MiB safety floor. See the
+[upstream Qwen-VL preprocessing discussion](https://github.com/ggml-org/llama.cpp/issues/16842).
 
 Through the production ZeroTier/Headroom/LiteLLM/llama.cpp route:
 

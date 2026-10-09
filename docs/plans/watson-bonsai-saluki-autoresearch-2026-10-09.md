@@ -80,8 +80,12 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
    a change.
 6. **Agent quality:** same prompts for strict JSON, multi-tool routing,
    long-history retention, concise reasoning-off behavior, and task adherence.
-   Saluki additionally gets an image grounding probe. Report item-level results;
-   never reduce the comparison to an average score alone.
+   Saluki additionally gets a controlled image-grounding comparison: default
+   image token floor versus `--image-min-tokens 1024`. Its retained startup log
+   warns that Qwen-VL grounding needs at least 1,024 image tokens. Record the
+   per-probe VRAM minimum and reject a setting that crosses the 2,048 MiB floor.
+   Report item-level results; never reduce the comparison to an average score
+   alone.
 7. **Final route:** verify authenticated llama.cpp → LiteLLM → Headroom → Hermes
    CLI, SSE termination, model/context metadata, and no Qwen aliases. Only after
    that may a Discord canary be attempted.
@@ -108,6 +112,11 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
 - The fresh Saluki test confirms 100,096 allocation, functioning vision,
   tool calls, streaming, and Hermes CLI use. Full-context prefill and comparative
   quality remain unmeasured.
+- The retained Saluki startup log warns that grounding may require
+  `--image-min-tokens 1024`; its prior image read used the default and does not
+  pass this grounding gate. The installed b11433 binary supports the flag. Run
+  a default-vs-1024 image probe only with VRAM monitoring and keep >=2,048 MiB
+  free throughout.
 - The fresh Bonsai run confirms 100,096 allocation, about 4.7 GiB idle VRAM
   headroom, and one short streamed sentinel through Headroom/LiteLLM. It did
   not measure long-prefill throughput or exercise the full 100k prompt length.
