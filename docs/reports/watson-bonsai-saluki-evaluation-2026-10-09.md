@@ -159,19 +159,38 @@ to preserve more cache precision without sacrificing the 2 GiB VRAM reserve.
   the launch profile, argument matcher, resource floor, and replacement guard.
 
 - Package audit on 2026-10-09: active Headroom is `0.40.0`, the current upstream
-  release, so no update was needed. The active LiteLLM process resolves to the
-  shared `C:\Users\Admin\itrader` Python environment and reports `1.99.0`; the
-  latest stable upstream release is `1.104.2`. It was not upgraded because
-  doing so in place would mutate the shared iTrader research environment and
-  require restarting port 4000. The serving Prism checkout is at
+  release, so no update was needed. The active LiteLLM process on port 4000
+  resolves to the shared `C:\Users\Admin\itrader` Python environment and
+  reports `1.99.0`; the latest stable upstream release is `1.104.2`. To avoid
+  mutating iTrader, the pinned proxy extra was installed in an isolated
+  [project environment](../../requirements-litellm.txt), and
+  [Start-Qwen36LiteLLM.ps1](../../scripts/windows/Start-Qwen36LiteLLM.ps1) now
+  keeps the existing PATH runtime as its default; selecting the project
+  executable explicitly requires `LITELLM_MASTER_KEY`. A localhost-only
+  port-4001 candidate, using a temporary process-only master key, passed the
+  authenticated model-list check and a short streamed Bonsai sentinel,
+  including a clean `[DONE]`. It was stopped after the test; during the canary
+  free VRAM stayed at 4,696 MiB and available RAM was 3.36 GiB. After shutdown
+  the model slot was idle, GPU use was 0%, and available RAM sampled at 3.71
+  GiB. The new proxy refused
+  to start without a master key; its unauthenticated models probe also surfaced
+  an internal 500 while handling the missing-key path. Production stayed on
+  port 4000 throughout. The current Hermes Watson provider has no API key and
+  sends only Headroom's custom auth header, so it is not yet ready for the new
+  LiteLLM auth contract. Do not cut over until the master key is wired into
+  Headroom's OpenAI upstream fallback and any direct ChatGPT/Codex profile is
+  updated and tested. The iTrader environment remains untouched.
+
+  The serving Prism checkout is at
   `7529fdaaf99ffdc5ca71ace9c7409a56b27ad92f`; fetched upstream branch head is
   `8eaee8b7f94e3ee629543e37f3113133b3c6ed41` (2026-10-09), which includes a
   newer PQ2_0 Ada mat-vec kernel. That is a promising isolated challenger, not
   a safe drop-in update: it needs a separate build, model-load validation, and
   matched throughput/correctness tests before replacing the live binary. The
   official mainline latest release is `b11533`, but this local group-128 model
-  pack still requires the Prism-compatible runtime. No live software package
-  or inference binary was changed during this pass.
+  pack still requires the Prism-compatible runtime. No live service package or
+  inference binary was changed during this pass; the isolated LiteLLM candidate
+  is installed but not serving production traffic.
 
 The launcher and its tests are in the repository; `test_saluki_launcher.ps1`,
 `test_watson_launcher.ps1`, `test_litellm_aliases.ps1`, and `git diff --check`
@@ -199,8 +218,10 @@ and prompt suite. They are useful context, not a direct Saluki-vs-Bonsai win.
 - Saluki launcher build: official `b11433` CUDA 13.4 Windows build, commit
   `50569eb87`; binary SHA-256
   `5E58114A496F64F21CBFED8E8E6F647C2810BDC052E87F73BC665C3C6F467208`.
-- LiteLLM: active process uses 1.99.0 from the shared iTrader environment;
-  latest stable upstream is 1.104.2 (not installed in this pass).
+- LiteLLM: active port-4000 process uses 1.99.0 from the shared iTrader
+  environment. Project-local 1.104.2 with proxy extras is installed and passed
+  a localhost authenticated SSE canary, but awaits client-auth wiring before
+  production cutover.
 - Headroom: 0.40.0, with non-loopback proxy authentication enabled.
 - ZeroTier Windows service: 1.16.2.
 

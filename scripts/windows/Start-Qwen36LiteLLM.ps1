@@ -7,10 +7,35 @@ param(
     [string]$UpstreamModel = "qwen3.8",
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
     [string]$ModelName = "qwen3.8",
+    [string]$LiteLLMExecutable = '',
     [switch]$UseStaticConfig
 )
 
 $ErrorActionPreference = "Stop"
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+
+function Resolve-LiteLLMExecutable {
+    param(
+        [string]$RequestedPath,
+        [string]$RepositoryRoot,
+        [bool]$MasterKeyAvailable
+    )
+
+    if ($RequestedPath) {
+        if (-not (Test-Path -LiteralPath $RequestedPath -PathType Leaf)) {
+            throw "Requested LiteLLM executable does not exist: $RequestedPath"
+        }
+        $resolvedRequest = (Resolve-Path -LiteralPath $RequestedPath).Path
+        $projectPath = [IO.Path]::GetFullPath((Join-Path $RepositoryRoot '.runtime\litellm\.venv\Scripts\litellm.exe'))
+        if ([IO.Path]::GetFullPath($resolvedRequest) -eq $projectPath -and -not $MasterKeyAvailable) {
+            throw 'The project LiteLLM 1.104.2 proxy requires LITELLM_MASTER_KEY; refusing to start it without authentication.'
+        }
+        return $resolvedRequest
+    }
+
+    $command = Get-Command litellm -CommandType Application -ErrorAction Stop
+    return $command.Source
+}
 
 function Test-HttpJson {
     param(
@@ -58,6 +83,13 @@ function Get-LegacyQwenAliasYaml {
       api_key: os.environ/LLAMA_CPP_API_KEY
 '@
 }
+
+$litellmMasterKey = $env:LITELLM_MASTER_KEY
+if ([string]::IsNullOrWhiteSpace($litellmMasterKey)) {
+    $litellmMasterKey = [Environment]::GetEnvironmentVariable('LITELLM_MASTER_KEY', 'User')
+    if (-not [string]::IsNullOrWhiteSpace($litellmMasterKey)) { $env:LITELLM_MASTER_KEY = $litellmMasterKey }
+}
+$litellmExe = Resolve-LiteLLMExecutable -RequestedPath $LiteLLMExecutable -RepositoryRoot $repoRoot -MasterKeyAvailable (-not [string]::IsNullOrWhiteSpace($litellmMasterKey))
 
 $models = Test-HttpJson -Uri "$LlamaCppBaseUrl/models" -ApiKey $BackendKey
 $availableModels = @()
@@ -110,6 +142,6 @@ $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
 
 Write-Host "llama.cpp model check passed: $UpstreamModel"
-Write-Host "Starting LiteLLM on http://$ListenHost`:$ListenPort using $resolvedConfig"
+Write-Host "Starting LiteLLM on http://$ListenHost`:$ListenPort using $resolvedConfig and $litellmExe"
 
-& litellm --config $resolvedConfig --host $ListenHost --port $ListenPort
+& $litellmExe --config $resolvedConfig --host $ListenHost --port $ListenPort

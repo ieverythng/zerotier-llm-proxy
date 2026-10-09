@@ -124,6 +124,14 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
   environment. The fetched Prism branch contains a newer Ada PQ2_0 kernel, but
   compile and benchmark it as a separate challenger before replacing the
   serving binary.
+- LiteLLM 1.104.2 is staged in a project-local environment and passed a local
+  authenticated Bonsai SSE canary. It requires `LITELLM_MASTER_KEY`; Hermes
+  currently sends no LiteLLM API key through Headroom, and the ChatGPT/Codex
+  profile auth also needs a compatibility check. Keep production on 1.99.0
+  until a key is wired into Headroom's upstream fallback and all intended
+  clients pass authenticated route tests. The launcher continues to default to
+  the current PATH runtime; the project-local executable is opt-in and refuses
+  to start without its key. The shared iTrader environment was not modified.
 - Hermes reports duplicate Discord credentials in stopped profiles. Preserve
   current default ownership; do not run gateway multiplex migration until the
   intended Discord profile ownership is explicitly resolved.
