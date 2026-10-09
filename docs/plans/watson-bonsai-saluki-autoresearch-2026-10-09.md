@@ -1,9 +1,10 @@
 # Watson Bonsai / Saluki autoresearch plan
 
 Date: 2026-10-09
-Status: Saluki is the live, functional candidate; neither candidate has passed
-the complete comparative promotion gate. Qwen3.8 is explicitly out of scope
-for this experiment and must remain unloaded/unqueried.
+Status: Bonsai is the live candidate after a successful 100,096-context Q8_0
+KV fit and short routed stream canary. Neither candidate has passed the complete
+comparative promotion gate. Qwen3.8 is explicitly out of scope and must remain
+unloaded/unqueried.
 
 Current measurements and caveats are in
 [the candidate evaluation report](../reports/watson-bonsai-saluki-evaluation-2026-10-09.md).
@@ -58,8 +59,10 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
    a mismatched listener. A pre-final-gate run verified the full live flow
    without a model reload. The stricter final RAM gate correctly refused when
    available RAM did not stay above 2 GiB for two samples; later read-only
-   sampling reached 2.52 GiB. A true cold-load test remains deferred while
-   Sunshine/desktop use is active and host RAM is unstable.
+   sampling reached 2.52 GiB. A Bonsai cold fit run subsequently succeeded on
+   the Prism build with `-ngl 99`, Q8_0 K/V, and direct I/O. A dedicated safe
+   Bonsai launcher is still needed before using the generic launcher, whose
+   bare default remains Qwen3.8.
 2. **Matched short baseline:** both Bonsai and Saluki, one cold and one warm
    run, same 8k–16k prompts and same short decode length. Capture prefill,
    first-token latency, decode, token counts, minimum VRAM, host RAM, and GPU
@@ -104,16 +107,17 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
 - The fresh Saluki test confirms 100,096 allocation, functioning vision,
   tool calls, streaming, and Hermes CLI use. Full-context prefill and comparative
   quality remain unmeasured.
-- The fresh Bonsai test confirms 100,096 allocation and ample VRAM, but no
-  matched long-prefill benchmark was run in this cycle.
+- The fresh Bonsai run confirms 100,096 allocation, about 4.7 GiB idle VRAM
+  headroom, and one short streamed sentinel through Headroom/LiteLLM. It did
+  not measure long-prefill throughput or exercise the full 100k prompt length.
 - Saluki has only ~2.3 GiB free VRAM at idle/warm state. Do not add concurrent
   draft models or launch heavy context fills under Sunshine.
-- Host RAM is fluctuating across the 2 GiB hard floor (below 1 GiB to 4.08 GiB
-  observed). Wait for a stable margin before claiming the launcher passes its
-  live resource gate or attempting cold load.
-- The generic `Start-WatsonStack.ps1` still defaults to Qwen; use the dedicated
-  Saluki launcher instead. Its safe reuse path is tested, but its true cold
-  startup has not yet been exercised.
+- A cold WSL/Gateway start briefly reduced available host RAM to 0.79 GiB; it
+  later reclaimed to 4.27-4.29 GiB across three idle samples with the gateway
+  active. This transient warrants continued monitoring before any long prefill.
+- The generic `Start-WatsonStack.ps1` still defaults to Qwen. Do not invoke it
+  without explicit Bonsai arguments. There is not yet a dedicated Bonsai
+  launcher; its exact live arguments are recorded in the evaluation report.
 - Hermes reports duplicate Discord credentials in stopped profiles. Preserve
   current default ownership; do not run gateway multiplex migration until the
   intended Discord profile ownership is explicitly resolved.

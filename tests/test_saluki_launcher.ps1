@@ -42,9 +42,20 @@ if (Test-ResourceReserve -FreeVramMiB 4096 -AvailableRamBytes (2GB - 1) -Minimum
 }
 
 function Get-FreeVramMiB { return 4096 }
-function Get-AvailableRamBytes { return 3GB }
-function Start-Sleep { param([int]$Seconds) }
-$reserve = Wait-ResourceReserve -MinimumFreeVramMiB 2048 -TimeoutSeconds 30 -RequiredHealthySamples 2
+$script:fakeClock = [datetime]'2026-10-09T00:00:00'
+$script:fakeRamSample = 0
+function Get-AvailableRamBytes {
+    $sample = $script:fakeRamSample
+    $script:fakeRamSample++
+    if ($sample -lt 6) { return 1GB }
+    return 3GB
+}
+function Get-Date { return $script:fakeClock }
+function Start-Sleep {
+    param([int]$Seconds)
+    $script:fakeClock = $script:fakeClock.AddSeconds($Seconds)
+}
+$reserve = Wait-ResourceReserve -MinimumFreeVramMiB 2048 -RequiredHealthySamples 2
 if ($reserve.AvailableRamBytes -ne 3GB) { throw 'The reserve wait did not return the stable healthy sample.' }
 
 Write-Host 'PASS: Saluki launch profile pins the tested model/runtime, requires projector and GPU offload, and cannot route Qwen.' -ForegroundColor Green

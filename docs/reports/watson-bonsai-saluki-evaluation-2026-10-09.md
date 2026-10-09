@@ -6,11 +6,11 @@ intentionally not loaded or queried in this cycle.
 
 ## Outcome
 
-Saluki is the current live Hermes candidate because it passed the current
-text, tool-call, image, streaming, and Hermes CLI route checks. This is a
-functional choice, not a final quality/performance promotion: the fresh Bonsai
-and Saluki runs were not a matched benchmark, and a near-100k-token prefill
-was deliberately not run while Sunshine and the desktop were in use.
+Bonsai is now the live Hermes candidate. It loaded at a 100,096-token context
+allocation, passed an authenticated Headroom/LiteLLM SSE canary, and left about
+4.7 GiB free VRAM. Qwen3.8 was not loaded or queried. This is a safe-fit and
+route check, not a final quality/performance promotion: there was no matched
+Saluki comparison or near-100k-token prompt, and no tool or vision suite was run.
 
 The existing Bonsai evaluation remains relevant: Bonsai is much faster at
 decode and has considerably more spare VRAM, but it failed one of four routed
@@ -23,11 +23,11 @@ objectively better.
 
 | | Ternary Bonsai 27B Q2_0 | Underdog Saluki 27B IQ2-mix |
 |---|---|---|
-| Context allocation | 100,096; Q4_0 K/V in the fresh allocation run | 100,096; Q8_0 K/V |
+| Context allocation | 100,096; latest fit run used Q8_0 K/V | 100,096; Q8_0 K/V |
 | Multimodal | No projector in the tested profile | F16 mmproj loaded with `--mmproj-offload` |
 | GPU request | CUDA device fit; all-layer offload requested in the tested profile | `-ngl 99`, flash attention on; all-layer offload requested |
-| VRAM | about 9.76 GiB used / 6.2 GiB free at idle in the fresh run | 13.2–13.7 GiB used; minimum sampled free 2,344 MiB |
-| Latest 100k-class full-prompt throughput | Not measured in the fresh Q4_0 allocation run | Not measured; allocation was 100,096, longest fresh prompt was 22,460 tokens |
+| VRAM | 11.0–11.1 GiB used / 4.6–4.7 GiB free in the latest Q8_0 run | 13.2–13.7 GiB used; minimum sampled free 2,344 MiB |
+| Latest 100k-class full-prompt throughput | Not measured; 100,096 was allocated but only a short route canary was run | Not measured; allocation was 100,096, longest fresh prompt was 22,460 tokens |
 
 For Saluki, `llama-server` reported a 100,096-token slot and loaded the F16
 multimodal projector. The observed 22,460-token request prefetched at
@@ -54,12 +54,61 @@ startup log confirms the projector loaded but does not retain an explicit
 consistent with the intended all-GPU configuration, but an exact layer-count
 claim is not proven by the retained log.
 
+## Bonsai live fit and stream canary (2026-10-09 evening)
+
+The Saluki server was stopped only after the Prism build and host/GPU reserves
+were checked. Bonsai was loaded from
+`D:\MODELS\Ternary-Bonsai-27B-Q2_0.gguf` using the existing Prism fork build
+at commit `7529fdaaf99ffdc5ca71ace9c7409a56b27ad92f`. The exact serving flags
+were `-c 100096 -b 512 -ub 256 -ngl 99 -fa on -ctk q8_0 -ctv q8_0 -dio
+--jinja --reasoning off -np 1 --api-key llama.cpp --metrics`, with alias
+`bonsai27b`. The Prism build is required for this local group-128 Q2_0 file;
+the standard b11433 binary is not interchangeable for this artifact.
+
+- llama.cpp, LiteLLM, and authenticated Headroom each exposed only
+  `bonsai27b`; `meta.n_ctx` was `100096`.
+- Idle VRAM was 4,711 MiB free immediately after load and 4,671 MiB after the
+  short stream canary. Host available RAM was 4.44 GiB after load and 4.21 GiB
+  after the canary.
+- A 20-token-capped streaming request returned HTTP 200, seven completion
+  tokens spelling `BONSAI_ROUTE_OK` across deltas, and a final `[DONE]` event.
+  The failed first client attempt was malformed JSON produced by Windows
+  `curl.exe` argument quoting; it returned HTTP 400 before inference and caused
+  no GPU activity. The same request passed through PowerShell's HTTP client.
+- Hermes now defaults to `bonsai27b` at context 100,096 and uses Bonsai for
+  local compression fallback. The Headroom project/user/token headers remain
+  configured, and the WSL gateway was confirmed active. No Discord canary was
+  sent.
+- A cold WSL restart briefly reduced host available RAM to 0.79 GiB; it
+  reclaimed to 2.69 GiB while the gateway remained active. This is a host/WSL
+  startup transient, not evidence of model RAM growth. Do not run another cold
+  load or full-context prefill until available-RAM margin is stable.
+- After the gateway settled, three 5-second idle samples held at 4.27-4.29 GiB
+  available RAM, 4,695-4,707 MiB free VRAM, 0% GPU utilization, and 1.02 GiB
+  llama-server working set. All three model catalogs still listed only Bonsai.
+
+`-ngl 99` requested all-layer GPU offload and the observed VRAM footprint is
+consistent with the weights and Q8 cache resident on GPU, but the default
+startup log did not retain an explicit `offloaded N/N layers` line. Full
+weight residency is strongly indicated, not proven by a layer count. Bonsai's
+vision projector is not currently downloaded or loaded; this runtime is
+text-only. The context allocation is not a 100k-token prompt test, and no
+throughput or long-prefill result is claimed from this canary.
+
+The [current Prism model card](https://huggingface.co/prism-ml/Ternary-Bonsai-27B-gguf)
+now labels the group-128 pack `PQ2_0` and recommends a group-64 `Q2_0` variant
+for stock llama.cpp. This host's existing `Q2_0.gguf` is the older group-128
+artifact, so it was intentionally run on the Prism fork. The [Prism KV-cache
+guide](https://github.com/PrismML-Eng/Bonsai-demo/blob/main/KV-CACHE.md)
+recommends a model-specific mean-centering bias with Q4_0; Q8_0 was chosen here
+to preserve more cache precision without sacrificing the 2 GiB VRAM reserve.
+
 ## Safety and caveats
 
-- The Saluki process remained above the hard 2 GiB VRAM reserve in all sampled
-  checks. Its minimum, 2,344 MiB, is only about 344 MiB above that floor, so
-  this is a narrow margin for a concurrent Sunshine workload. Current idle
-  sample: 2,366 MiB free, 0% GPU utilization.
+- The previously tested Saluki process stayed above the hard 2 GiB VRAM reserve
+  in sampled checks. Its minimum, 2,344 MiB, is only about 344 MiB above that
+  floor, so this is a narrow margin for concurrent Sunshine. Saluki is not the
+  currently loaded model.
 - Host available memory fluctuated substantially: it briefly sampled 0.8 GiB,
   later held at 4.05–4.08 GiB for three readings, then fell below 1 GiB during
   stricter launcher runs. Those runs stopped before proxy setup and left the
@@ -68,17 +117,17 @@ claim is not proven by the retained log.
   group 2.32 GiB, WSL VM 1.52 GiB, llama.cpp 1.45 GiB). WSL itself reported
   6.9 GiB available. This is not a stable RAM pass; do not infer peak-context
   RAM safety from the short prompts.
-- The Saluki process reports about 1.47 GiB working set but about 15.05 GiB
-  private/committed memory. These are different measurements; the latter is
-  not equivalent to resident RAM. Keep it in the memory watcher and investigate
-  if host commit or pagefile activity climbs.
-- A short model request briefly sampled up to 96% GPU utilization. No sustained
-  or concurrent load test was run. This does not prove a no-interference
-  Sunshine profile.
-- Hermes gateway is active and was restarted to load the new model/auth config.
-  Hermes still warns that three stopped profiles share the default Discord
-  bot credential. The active default profile is usable, but gateway
-  multiplexing/ownership is not clean and was intentionally not migrated here.
+- During the previous Saluki run its process reported about 1.47 GiB working
+  set but about 15.05 GiB private/committed memory. These are different
+  measurements; the latter is not equivalent to resident RAM. Keep it in the
+  memory watcher and investigate if host commit or pagefile activity climbs.
+- A short request in the previous Saluki run briefly sampled up to 96% GPU
+  utilization. No sustained or concurrent load test was run; this does not
+  prove a no-interference Sunshine profile.
+- Hermes gateway is active with Bonsai configured. Hermes still warns that
+  three stopped profiles share the default Discord bot credential. The active
+  default profile is usable, but gateway multiplexing/ownership is not clean
+  and was intentionally not migrated here.
 - `Start-WatsonStack.ps1` still defaults to the historical `qwen3.8` profile,
   and its external profile launcher does not pass the Saluki mmproj/direct-I/O
   settings. A dedicated [Saluki launcher](../../scripts/windows/Start-SalukiStack.ps1)
@@ -110,9 +159,11 @@ That report's workflow result was 3/4 for Bonsai versus 4/4 for Watson.
 Those historical measurements use a different date, runtime configuration,
 and prompt suite. They are useful context, not a direct Saluki-vs-Bonsai win.
 
-## Current stack versions
+## Runtime and stack versions
 
-- llama.cpp: official `b11433` CUDA 13.4 Windows build, commit
+- Active Bonsai llama.cpp: Prism CUDA build at commit
+  `7529fdaaf99ffdc5ca71ace9c7409a56b27ad92f`.
+- Saluki launcher build: official `b11433` CUDA 13.4 Windows build, commit
   `50569eb87`; binary SHA-256
   `5E58114A496F64F21CBFED8E8E6F647C2810BDC052E87F73BC665C3C6F467208`.
 - LiteLLM: 1.104.2.

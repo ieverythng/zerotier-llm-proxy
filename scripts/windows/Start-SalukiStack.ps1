@@ -131,7 +131,9 @@ function Test-ResourceReserve {
 function Wait-ResourceReserve {
     param(
         [int]$MinimumFreeVramMiB,
-        [int]$TimeoutSeconds = 30,
+        # WSL can retain its initial VM working set briefly after the config
+        # probe exits; allow that reclaim cycle to finish before failing closed.
+        [int]$TimeoutSeconds = 60,
         [int]$RequiredHealthySamples = 2
     )
 
