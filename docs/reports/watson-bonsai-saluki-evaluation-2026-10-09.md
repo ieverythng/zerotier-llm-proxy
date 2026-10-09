@@ -79,6 +79,17 @@ the standard b11433 binary is not interchangeable for this artifact.
   local compression fallback. The Headroom project/user/token headers remain
   configured, and the WSL gateway was confirmed active. No Discord canary was
   sent.
+- The Bonsai-specific [launcher](../../scripts/windows/Start-BonsaiStack.ps1)
+  completed its live reuse path without reloading the server or generating
+  tokens. It validated the loaded 100,096 context, the Bonsai-only catalogs,
+  the saved Hermes/Headroom configuration, and the active gateway. Its final
+  stable sample was 4,687 MiB free VRAM / 2.38 GiB available host RAM. A
+  separate read-only route check succeeded via the ZeroTier interface and from
+  WSL to Headroom; llama.cpp reported one idle slot and no active inference.
+  Three later idle samples held at 4,697-4,698 MiB free VRAM, 0% GPU
+  utilization, and 4.32-4.33 GiB available host RAM. Earlier in that diagnostic
+  sequence host-available RAM briefly sampled below 1 GiB, then recovered; no
+  inference, model reload, or package installation occurred during that dip.
 - A cold WSL restart briefly reduced host available RAM to 0.79 GiB; it
   reclaimed to 2.69 GiB while the gateway remained active. This is a host/WSL
   startup transient, not evidence of model RAM growth. Do not run another cold
@@ -140,6 +151,28 @@ to preserve more cache precision without sacrificing the 2 GiB VRAM reserve.
   deliberately not exercised while Sunshine/desktop use was in scope. Do not
   run `Start-WatsonStack.ps1` with defaults while Qwen is excluded.
 
+- A separate [Bonsai launcher](../../scripts/windows/Start-BonsaiStack.ps1) now
+  pins the tested Prism binary/model identity, 100k context, Q8_0 K/V, direct
+  I/O, and no speculative decoding. Its reuse path validates the live server
+  and proxies without an inference. Explicit replacement is fail-closed to a
+  `llama-server.exe` under `PROJECTS` using the expected port. Unit tests cover
+  the launch profile, argument matcher, resource floor, and replacement guard.
+
+- Package audit on 2026-10-09: active Headroom is `0.40.0`, the current upstream
+  release, so no update was needed. The active LiteLLM process resolves to the
+  shared `C:\Users\Admin\itrader` Python environment and reports `1.99.0`; the
+  latest stable upstream release is `1.104.2`. It was not upgraded because
+  doing so in place would mutate the shared iTrader research environment and
+  require restarting port 4000. The serving Prism checkout is at
+  `7529fdaaf99ffdc5ca71ace9c7409a56b27ad92f`; fetched upstream branch head is
+  `8eaee8b7f94e3ee629543e37f3113133b3c6ed41` (2026-10-09), which includes a
+  newer PQ2_0 Ada mat-vec kernel. That is a promising isolated challenger, not
+  a safe drop-in update: it needs a separate build, model-load validation, and
+  matched throughput/correctness tests before replacing the live binary. The
+  official mainline latest release is `b11533`, but this local group-128 model
+  pack still requires the Prism-compatible runtime. No live software package
+  or inference binary was changed during this pass.
+
 The launcher and its tests are in the repository; `test_saluki_launcher.ps1`,
 `test_watson_launcher.ps1`, `test_litellm_aliases.ps1`, and `git diff --check`
 passed. The isolated Headroom auth test now refuses to start when production
@@ -166,7 +199,8 @@ and prompt suite. They are useful context, not a direct Saluki-vs-Bonsai win.
 - Saluki launcher build: official `b11433` CUDA 13.4 Windows build, commit
   `50569eb87`; binary SHA-256
   `5E58114A496F64F21CBFED8E8E6F647C2810BDC052E87F73BC665C3C6F467208`.
-- LiteLLM: 1.104.2.
+- LiteLLM: active process uses 1.99.0 from the shared iTrader environment;
+  latest stable upstream is 1.104.2 (not installed in this pass).
 - Headroom: 0.40.0, with non-loopback proxy authentication enabled.
 - ZeroTier Windows service: 1.16.2.
 

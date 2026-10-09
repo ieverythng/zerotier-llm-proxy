@@ -60,9 +60,10 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
    without a model reload. The stricter final RAM gate correctly refused when
    available RAM did not stay above 2 GiB for two samples; later read-only
    sampling reached 2.52 GiB. A Bonsai cold fit run subsequently succeeded on
-   the Prism build with `-ngl 99`, Q8_0 K/V, and direct I/O. A dedicated safe
-   Bonsai launcher is still needed before using the generic launcher, whose
-   bare default remains Qwen3.8.
+   the Prism build with `-ngl 99`, Q8_0 K/V, and direct I/O. The dedicated
+   [Bonsai launcher](../../scripts/windows/Start-BonsaiStack.ps1) is now in
+   place; its live reuse path has passed without reloading or generating. The
+   generic launcher still defaults to Qwen3.8 and must not be invoked bare.
 2. **Matched short baseline:** both Bonsai and Saluki, one cold and one warm
    run, same 8k–16k prompts and same short decode length. Capture prefill,
    first-token latency, decode, token counts, minimum VRAM, host RAM, and GPU
@@ -116,8 +117,13 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
   later reclaimed to 4.27-4.29 GiB across three idle samples with the gateway
   active. This transient warrants continued monitoring before any long prefill.
 - The generic `Start-WatsonStack.ps1` still defaults to Qwen. Do not invoke it
-  without explicit Bonsai arguments. There is not yet a dedicated Bonsai
-  launcher; its exact live arguments are recorded in the evaluation report.
+  without explicit Bonsai arguments. Use `Start-BonsaiStack.ps1` for the safe
+  Bonsai-specific path; its exact live arguments are recorded in the evaluation
+  report. The active LiteLLM process is from the shared iTrader environment
+  (1.99.0), so isolate and test a 1.104.2 upgrade before changing that shared
+  environment. The fetched Prism branch contains a newer Ada PQ2_0 kernel, but
+  compile and benchmark it as a separate challenger before replacing the
+  serving binary.
 - Hermes reports duplicate Discord credentials in stopped profiles. Preserve
   current default ownership; do not run gateway multiplex migration until the
   intended Discord profile ownership is explicitly resolved.
