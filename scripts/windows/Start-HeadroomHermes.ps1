@@ -18,6 +18,16 @@ if (-not (Test-Path -LiteralPath $headroomExe)) {
     throw "Headroom is not installed. Run .\scripts\windows\Install-HeadroomHermes.ps1 first."
 }
 
+# Headroom 0.40 requires authentication when binding beyond loopback. PowerShell
+# processes started before a user environment-variable change do not inherit it,
+# so explicitly import the user-scoped token before launching the hidden worker.
+if ([string]::IsNullOrWhiteSpace($env:HEADROOM_PROXY_TOKEN)) {
+    $env:HEADROOM_PROXY_TOKEN = [Environment]::GetEnvironmentVariable("HEADROOM_PROXY_TOKEN", "User")
+}
+if ([string]::IsNullOrWhiteSpace($env:HEADROOM_PROXY_TOKEN)) {
+    throw "HEADROOM_PROXY_TOKEN is required for Headroom's 0.0.0.0 listener. Set a random token in the Windows user environment before starting the stack."
+}
+
 if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) {
     try {
         $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 3

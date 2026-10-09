@@ -67,8 +67,15 @@ function Write-Fail { param([string]$Msg); Write-Host ("  [FAIL] {0}" -f $Msg) -
 
 # ─── Health check helper ────────────────────────────────────────
 function Test-JsonEndpoint {
-    param([string]$Uri)
-    try { return Invoke-RestMethod -Uri $Uri -Method Get -TimeoutSec 5 }
+    param(
+        [string]$Uri,
+        [string]$ApiKey = ""
+    )
+    $headers = @{}
+    if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+        $headers.Authorization = "Bearer $ApiKey"
+    }
+    try { return Invoke-RestMethod -Uri $Uri -Headers $headers -Method Get -TimeoutSec 5 }
     catch { return $null }
 }
 
@@ -277,7 +284,7 @@ if (-not $SkipLlamaStart) {
         throw "Cannot proceed without llama.cpp startup script."
     }
 
-    $existingModels = Test-JsonEndpoint -Uri "$llamaBaseUrl/models"
+    $existingModels = Test-JsonEndpoint -Uri "$llamaBaseUrl/models" -ApiKey $BackendKey
     $existingNames = @()
     if ($existingModels.data) { $existingNames += @($existingModels.data | ForEach-Object { $_.id }) }
     if ($existingModels.models) { $existingNames += @($existingModels.models | ForEach-Object { $_.id; $_.name; $_.model }) }
@@ -336,7 +343,7 @@ if (-not $SkipLlamaStart) {
     $ready = $false
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Seconds 2
-        $models = Test-JsonEndpoint -Uri "$llamaBaseUrl/models"
+        $models = Test-JsonEndpoint -Uri "$llamaBaseUrl/models" -ApiKey $BackendKey
         $modelNames = @()
         if ($models.data) { $modelNames += @($models.data | ForEach-Object { $_.id }) }
         if ($models.models) { $modelNames += @($models.models | ForEach-Object { $_.id; $_.name; $_.model }) }
@@ -358,7 +365,7 @@ if (-not $SkipLlamaStart) {
     Write-Step "Phase 1: Skipping llama.cpp startup (user provided)"
 
     # Verify it's already running
-    $models = Test-JsonEndpoint -Uri "$llamaBaseUrl/models"
+    $models = Test-JsonEndpoint -Uri "$llamaBaseUrl/models" -ApiKey $BackendKey
     if (-not $models) {
         throw "llama.cpp is not responding at $llamaBaseUrl. Start it first or remove -SkipLlamaStart."
     }
@@ -390,7 +397,7 @@ if ($SkipCoherenceCheck) {
 } else {
     Write-Step 'Checking bounded, coherent chat generation'
     Write-Warn 'This gate performs two real model generations and will briefly raise GPU utilization.'
-    & (Join-Path $PSScriptRoot 'Test-WatsonChatHealth.ps1') -BaseUrl $llamaBaseUrl -Model $ServedAlias | Out-Host
+    & (Join-Path $PSScriptRoot 'Test-WatsonChatHealth.ps1') -BaseUrl $llamaBaseUrl -Model $ServedAlias -ApiKey $BackendKey | Out-Host
 }
 
 # ─── Phase 2: LiteLLM Proxy ─────────────────────────────────────
@@ -559,7 +566,7 @@ Write-Host "====================================================" -ForegroundCol
 Write-Host "  Stack Status Summary:" -ForegroundColor Green
 Write-Host ""
 
-$llamaUp = $null -ne (Test-JsonEndpoint -Uri "$llamaBaseUrl/models")
+$llamaUp = $null -ne (Test-JsonEndpoint -Uri "$llamaBaseUrl/models" -ApiKey $BackendKey)
 $litellmUp = $null -ne (Test-JsonEndpoint -Uri "$litellmBaseUrl/models")
 $headroomUp = $headroomEnabled -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$HeadroomPort/health"))
 $oracleUp = $oracleEnabled -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$Webchat2ApiPort/v1/models"))

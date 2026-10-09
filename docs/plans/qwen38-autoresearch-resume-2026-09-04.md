@@ -1,5 +1,10 @@
 # Qwen3.8 autoresearch resume plan
 
+> **Historical / paused as of 2026-10-09:** Qwen3.8 is intentionally not being
+> loaded or queried in the current candidate cycle. Continue with
+> [the Bonsai/Saluki plan](watson-bonsai-saluki-autoresearch-2026-10-09.md)
+> unless the user explicitly brings Qwen back into scope.
+
 This is the post-recovery continuation of the Watson stack optimization loop.
 The canonical runtime is:
 

@@ -18,9 +18,31 @@ $ast = [Management.Automation.Language.Parser]::ParseFile($launcher, [ref]$token
 if ($errors) { throw ($errors | Out-String) }
 
 # Load pure validation functions without starting any services.
-foreach ($name in @('Get-CommandLineOptionValue', 'Test-RequestedLlamaRuntime')) {
+foreach ($name in @('Get-CommandLineOptionValue', 'Test-RequestedLlamaRuntime', 'Test-JsonEndpoint')) {
     $node = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name }, $true)
     . ([scriptblock]::Create($node.Extent.Text))
+}
+
+$script:capturedHeaders = $null
+function Invoke-RestMethod {
+    param([string]$Uri, [hashtable]$Headers, [string]$Method, [int]$TimeoutSec)
+    $script:capturedHeaders = $Headers
+    return @{ ok = $true }
+}
+if (-not (Test-JsonEndpoint -Uri 'http://llama.test/v1/models' -ApiKey 'llama.cpp')) {
+    throw 'Authenticated model endpoint probe did not return its response.'
+}
+if ($script:capturedHeaders.Authorization -ne 'Bearer llama.cpp') {
+    throw 'Model endpoint probe did not attach the configured Bearer API key.'
+}
+if (-not (Test-JsonEndpoint -Uri 'http://proxy.test/v1/models')) {
+    throw 'Unauthenticated proxy endpoint probe did not return its response.'
+}
+if ($script:capturedHeaders.Count -ne 0) {
+    throw 'The generic proxy health probe unexpectedly received an API key.'
+}
+if ($launcherSource -notmatch 'Test-WatsonChatHealth\.ps1.*-ApiKey \$BackendKey') {
+    throw 'The bounded chat health check does not pass the backend API key.'
 }
 $official = 'C:\Users\Admin\PROJECTS\llama-b10621-win-cuda133'
 $model = 'D:\MODELS\Qwen3.8-27B-UD-IQ3_S.gguf'

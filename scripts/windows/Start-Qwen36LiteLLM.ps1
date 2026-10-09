@@ -13,16 +13,53 @@ param(
 $ErrorActionPreference = "Stop"
 
 function Test-HttpJson {
-    param([string]$Uri)
+    param(
+        [string]$Uri,
+        [string]$ApiKey = ""
+    )
+
+    $headers = @{}
+    if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+        $headers.Authorization = "Bearer $ApiKey"
+    }
 
     try {
-        return Invoke-RestMethod -Uri $Uri -Method Get -TimeoutSec 10
+        return Invoke-RestMethod -Uri $Uri -Headers $headers -Method Get -TimeoutSec 10
     } catch {
         throw "HTTP check failed for $Uri. $($_.Exception.Message)"
     }
 }
 
-$models = Test-HttpJson -Uri "$LlamaCppBaseUrl/models"
+function Get-LegacyQwenAliasYaml {
+    param(
+        [string]$ModelName,
+        [string]$UpstreamModel
+    )
+
+    if ($ModelName -ne 'qwen3.8' -or $UpstreamModel -ne 'qwen3.8') {
+        return ''
+    }
+
+    return @'
+  - model_name: qwen36-turbo-hermes
+    litellm_params:
+      model: openai/qwen3.8
+      api_base: __API_BASE__
+      api_key: os.environ/LLAMA_CPP_API_KEY
+  - model_name: qwen36-turbo-hermes-llama
+    litellm_params:
+      model: openai/qwen3.8
+      api_base: __API_BASE__
+      api_key: os.environ/LLAMA_CPP_API_KEY
+  - model_name: qwen36-turbo-hermes-spec
+    litellm_params:
+      model: openai/qwen3.8
+      api_base: __API_BASE__
+      api_key: os.environ/LLAMA_CPP_API_KEY
+'@
+}
+
+$models = Test-HttpJson -Uri "$LlamaCppBaseUrl/models" -ApiKey $BackendKey
 $availableModels = @()
 if ($models.data) { $availableModels += @($models.data | ForEach-Object { $_.id }) }
 if ($models.models) { $availableModels += @($models.models | ForEach-Object { $_.id; $_.name; $_.model }) }
@@ -37,6 +74,10 @@ if ($UseStaticConfig) {
     $runtimeDir = Join-Path $PSScriptRoot "..\..\_tmp\litellm"
     New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
     $runtimeConfig = Join-Path $runtimeDir "llama-cpp-active.yaml"
+    $legacyQwenAliases = Get-LegacyQwenAliasYaml -ModelName $ModelName -UpstreamModel $UpstreamModel
+    if ($legacyQwenAliases) {
+        $legacyQwenAliases = $legacyQwenAliases.Replace('__API_BASE__', $LlamaCppBaseUrl)
+    }
     @"
 model_list:
   - model_name: $ModelName
@@ -44,21 +85,7 @@ model_list:
       model: openai/$UpstreamModel
       api_base: $LlamaCppBaseUrl
       api_key: os.environ/LLAMA_CPP_API_KEY
-  - model_name: qwen36-turbo-hermes
-    litellm_params:
-      model: openai/$UpstreamModel
-      api_base: $LlamaCppBaseUrl
-      api_key: os.environ/LLAMA_CPP_API_KEY
-  - model_name: qwen36-turbo-hermes-llama
-    litellm_params:
-      model: openai/$UpstreamModel
-      api_base: $LlamaCppBaseUrl
-      api_key: os.environ/LLAMA_CPP_API_KEY
-  - model_name: qwen36-turbo-hermes-spec
-    litellm_params:
-      model: openai/$UpstreamModel
-      api_base: $LlamaCppBaseUrl
-      api_key: os.environ/LLAMA_CPP_API_KEY
+$legacyQwenAliases
 litellm_settings:
   drop_params: true
   request_timeout: 600
