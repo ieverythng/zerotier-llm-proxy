@@ -1,18 +1,21 @@
 [CmdletBinding()]
 param(
     [int]$Port = 8787,
+    [string]$ListenHost = "0.0.0.0",
     [string]$LiteLLMUpstream = "http://127.0.0.1:4000/v1",
     [int]$ProtectRecent = 12,
     [int]$MinTokens = 1000,
-    [switch]$ForceKompress
+    [switch]$ForceKompress,
+    [switch]$NoMemory
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $runtimeRoot = Join-Path $repoRoot ".runtime\headroom"
 $headroomExe = Join-Path $runtimeRoot ".venv\Scripts\headroom.exe"
-$logFile = Join-Path $runtimeRoot "headroom.log"
-$workerFile = Join-Path $runtimeRoot "headroom.worker.ps1"
+$runtimeSuffix = if ($Port -eq 8787) { '' } else { ".$Port" }
+$logFile = Join-Path $runtimeRoot "headroom$runtimeSuffix.log"
+$workerFile = Join-Path $runtimeRoot "headroom$runtimeSuffix.worker.ps1"
 
 if (-not (Test-Path -LiteralPath $headroomExe)) {
     throw "Headroom is not installed. Run .\scripts\windows\Install-HeadroomHermes.ps1 first."
@@ -26,6 +29,41 @@ if ([string]::IsNullOrWhiteSpace($env:HEADROOM_PROXY_TOKEN)) {
 }
 if ([string]::IsNullOrWhiteSpace($env:HEADROOM_PROXY_TOKEN)) {
     throw "HEADROOM_PROXY_TOKEN is required for Headroom's 0.0.0.0 listener. Set a random token in the Windows user environment before starting the stack."
+}
+
+# LiteLLM 1.104+ requires a master key. Scope that credential to a local
+# OpenAI-compatible upstream; never forward it to a remote provider URL.
+$litellmMasterKey = $env:LITELLM_MASTER_KEY
+if ([string]::IsNullOrWhiteSpace($litellmMasterKey)) {
+    $litellmMasterKey = [Environment]::GetEnvironmentVariable('LITELLM_MASTER_KEY', 'User')
+}
+if (-not [string]::IsNullOrWhiteSpace($litellmMasterKey)) {
+    $upstreamUri = $null
+    if (-not [Uri]::TryCreate($LiteLLMUpstream, [UriKind]::Absolute, [ref]$upstreamUri)) {
+        throw 'LiteLLMUpstream must be an absolute URL before upstream credentials can be configured.'
+    }
+    if ($upstreamUri.IsLoopback) {
+        $upstreamHeaders = [ordered]@{}
+        if (-not [string]::IsNullOrWhiteSpace($env:OPENAI_TARGET_API_HEADERS)) {
+            try { $configuredHeaders = ConvertFrom-Json -InputObject $env:OPENAI_TARGET_API_HEADERS -ErrorAction Stop }
+            catch { throw 'OPENAI_TARGET_API_HEADERS must be a JSON object of string header values.' }
+            if ($null -eq $configuredHeaders -or $configuredHeaders -isnot [PSCustomObject]) {
+                throw 'OPENAI_TARGET_API_HEADERS must be a JSON object of string header values.'
+            }
+            foreach ($property in $configuredHeaders.PSObject.Properties) {
+                if ($property.Value -isnot [string]) {
+                    throw 'OPENAI_TARGET_API_HEADERS must be a JSON object of string header values.'
+                }
+                $upstreamHeaders[$property.Name] = $property.Value
+            }
+        }
+        $upstreamHeaders['Authorization'] = "Bearer $litellmMasterKey"
+        $env:OPENAI_TARGET_API_HEADERS = ConvertTo-Json -InputObject $upstreamHeaders -Compress
+        Write-Host 'Headroom will authenticate its loopback OpenAI upstream; key value hidden.' -ForegroundColor DarkGray
+    }
+    else {
+        Write-Warning 'LITELLM_MASTER_KEY was not forwarded because the configured OpenAI upstream is not loopback.'
+    }
 }
 
 if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) {
@@ -74,14 +112,17 @@ $env:HEADROOM_FORCE_KOMPRESS = "__FORCE_KOMPRESS__"
 # Hermes/Discord and local Codex share one intentional user-scoped memory store.
 # Explicit global mode also keeps Responses memory-save and memory-search on the
 # same backend while Headroom's per-project continuation seam is repaired upstream.
-& "__HEADROOM_EXE__" proxy --host 0.0.0.0 --port __PORT__ --mode token --intercept-tool-results --no-subscription-tracking --no-telemetry --memory --memory-storage global *> "__LOG_FILE__"
+& "__HEADROOM_EXE__" proxy --host __LISTEN_HOST__ --port __PORT__ --mode token --intercept-tool-results --no-subscription-tracking --no-telemetry __MEMORY_ARGS__ *> "__LOG_FILE__"
 '@
+$memoryArguments = if ($NoMemory) { '' } else { '--memory --memory-storage global' }
 $worker = $worker.Replace("__UPSTREAM__", $LiteLLMUpstream).
     Replace("__REPO_ROOT__", $repoRoot).
     Replace("__MIN_TOKENS__", $MinTokens).
     Replace("__PROTECT_RECENT__", $ProtectRecent).
     Replace("__FORCE_KOMPRESS__", $(if ($ForceKompress) { "1" } else { "0" })).
     Replace("__HEADROOM_EXE__", $headroomExe).
+    Replace("__LISTEN_HOST__", $ListenHost).
+    Replace("__MEMORY_ARGS__", $memoryArguments).
     Replace("__PORT__", $Port).
     Replace("__LOG_FILE__", $logFile)
 Set-Content -LiteralPath $workerFile -Value $worker -Encoding ASCII

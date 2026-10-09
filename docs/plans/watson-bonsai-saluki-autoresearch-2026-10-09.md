@@ -137,17 +137,17 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
   authenticated Bonsai SSE canary. It requires `LITELLM_MASTER_KEY`; Hermes
   currently sends no LiteLLM API key through Headroom, and the ChatGPT/Codex
   profile auth also needs a compatibility check. Keep production on 1.99.0
-  until authenticated route tests pass. Source inspection found Headroom's
-  HTTP chat handler forwards caller Authorization and merges
-  `openai_extra_headers` from `OPENAI_TARGET_API_HEADERS`; its
-  `OPENAI_API_KEY` fallback is only in the WebSocket handler. Neither Windows
-  user settings nor Hermes `.env` currently contains a LiteLLM master key.
-  Next, validate the scoped extra-header route on isolated LiteLLM/Headroom
-  ports, then Hermes CLI; do not put the key in the shared iTrader environment
-  or cut over production until direct ChatGPT/Codex auth is also resolved. The
-  launcher continues to default to the current PATH runtime; the project-local
-  executable is opt-in and refuses to start without its key. The shared iTrader
-  environment was not modified.
+  until Hermes client-auth and direct ChatGPT/Codex compatibility are verified.
+  The isolated Headroom/LiteLLM 1.104.2 test now passes authenticated model-list
+  passthrough using caller Authorization and a streamed chat request using
+  `OPENAI_TARGET_API_HEADERS` scoped to the loopback LiteLLM target. Headroom's
+  configured extra header is not added to generic passthrough routes, so the
+  current Hermes provider still needs an API key before it can use the candidate
+  version's protected `/models` route. Do not put the key in the shared iTrader
+  environment or cut over production before testing that Hermes path and direct
+  ChatGPT/Codex auth. The launcher continues to default to the current PATH
+  runtime; the project-local executable is opt-in and refuses to start without
+  its key. The shared iTrader environment was not modified.
 - Hermes reports duplicate Discord credentials in stopped profiles. Preserve
   current default ownership; do not run gateway multiplex migration until the
   intended Discord profile ownership is explicitly resolved.

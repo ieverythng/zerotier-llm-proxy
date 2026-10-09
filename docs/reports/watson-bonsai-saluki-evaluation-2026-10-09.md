@@ -212,10 +212,37 @@ to preserve more cache precision without sacrificing the 2 GiB VRAM reserve.
 
 The launcher and its tests are in the repository; `test_saluki_launcher.ps1`,
 `test_watson_launcher.ps1`, `test_litellm_aliases.ps1`, and `git diff --check`
-passed. The isolated Headroom auth test now refuses to start when production
-Headroom is already bound, preventing shared-memory-store collisions. Its
-isolated branch was not run beside the live service; production auth and the
-Hermes request path were verified end-to-end instead.
+passed. The isolated Headroom auth test refuses to bind production ports and
+uses `--no-memory` to avoid touching the live global memory store.
+
+## Isolated Headroom-to-LiteLLM auth canary (2026-10-09)
+
+The project-local LiteLLM 1.104.2 and a separate Headroom process were started
+on loopback ports 18401 and 18788 while production remained on 4000/8787. The
+test used a random process-only master key, did not modify Windows user
+settings, Hermes `.env`, iTrader's environment, or the live Headroom worker,
+and cleaned up only its own listeners. Bonsai was the only llama.cpp model;
+the test first checked its slot was idle and retained the 2 GiB RAM/VRAM hard
+floors.
+
+Authenticated `/v1/models` passed when the caller sent `Authorization: Bearer`
+through Headroom's generic passthrough. A streamed `/v1/chat/completions`
+request also passed: the Headroom launcher supplied `OPENAI_TARGET_API_HEADERS`
+only for its loopback LiteLLM target, and the response ended with `[DONE]`.
+This resolves the isolated transport/auth seam, but does not yet prove Hermes
+compatibility: the saved Hermes Watson provider still has no `api_key`, so it
+does not send the bearer needed by LiteLLM 1.104.2's generic model-list route.
+The launcher-side configured header applies to Headroom's chat handler; it is
+not injected into generic passthrough routes. Hermes client-auth wiring,
+tool-call streaming, and direct Codex/ChatGPT compatibility remain open before
+production can move off LiteLLM 1.99.0.
+
+At the latest post-canary sample, the Bonsai process remained the only
+llama.cpp server at context 100,096, with `-ngl 99`, Q8_0 K/V and one slot.
+VRAM was 11,311 MiB used / 4,691 MiB free, GPU utilization was 0%, and
+available host RAM was 3.48 GiB. The short canary did not run a long-context
+prefill or establish exact offloaded layer count; keep distinguishing requested
+GPU flags and observed VRAM from verified full weight residency.
 
 ## Prior Bonsai results (not a matched comparison)
 
