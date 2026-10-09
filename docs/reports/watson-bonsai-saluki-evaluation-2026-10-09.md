@@ -187,10 +187,17 @@ to preserve more cache precision without sacrificing the 2 GiB VRAM reserve.
   to start without a master key; its unauthenticated models probe also surfaced
   an internal 500 while handling the missing-key path. Production stayed on
   port 4000 throughout. The current Hermes Watson provider has no API key and
-  sends only Headroom's custom auth header, so it is not yet ready for the new
-  LiteLLM auth contract. Do not cut over until the master key is wired into
-  Headroom's OpenAI upstream fallback and any direct ChatGPT/Codex profile is
-  updated and tested. The iTrader environment remains untouched.
+  sends only Headroom's custom headers. Source inspection shows Headroom's HTTP
+  chat handler forwards caller Authorization and merges operator-owned
+  `openai_extra_headers`, configurable with `OPENAI_TARGET_API_HEADERS`; the
+  `OPENAI_API_KEY` fallback is only in its WebSocket handler and is not the
+  Hermes HTTP solution. Hermes `.env` and Windows user settings currently have
+  no `LITELLM_MASTER_KEY`. A candidate integration should provide an
+  Authorization header scoped to Headroom's configured LiteLLM upstream from
+  that key, then test models, streamed chat, tool calls, and Hermes CLI on
+  isolated ports before any cutover. Direct ChatGPT/Codex profile auth remains
+  unverified. This is source/config tracing only; production stayed on 1.99.0
+  and the shared iTrader environment remains untouched.
 
   The serving Prism checkout is at
   `7529fdaaf99ffdc5ca71ace9c7409a56b27ad92f`; fetched upstream branch head is

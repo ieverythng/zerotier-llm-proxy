@@ -137,10 +137,17 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
   authenticated Bonsai SSE canary. It requires `LITELLM_MASTER_KEY`; Hermes
   currently sends no LiteLLM API key through Headroom, and the ChatGPT/Codex
   profile auth also needs a compatibility check. Keep production on 1.99.0
-  until a key is wired into Headroom's upstream fallback and all intended
-  clients pass authenticated route tests. The launcher continues to default to
-  the current PATH runtime; the project-local executable is opt-in and refuses
-  to start without its key. The shared iTrader environment was not modified.
+  until authenticated route tests pass. Source inspection found Headroom's
+  HTTP chat handler forwards caller Authorization and merges
+  `openai_extra_headers` from `OPENAI_TARGET_API_HEADERS`; its
+  `OPENAI_API_KEY` fallback is only in the WebSocket handler. Neither Windows
+  user settings nor Hermes `.env` currently contains a LiteLLM master key.
+  Next, validate the scoped extra-header route on isolated LiteLLM/Headroom
+  ports, then Hermes CLI; do not put the key in the shared iTrader environment
+  or cut over production until direct ChatGPT/Codex auth is also resolved. The
+  launcher continues to default to the current PATH runtime; the project-local
+  executable is opt-in and refuses to start without its key. The shared iTrader
+  environment was not modified.
 - Hermes reports duplicate Discord credentials in stopped profiles. Preserve
   current default ownership; do not run gateway multiplex migration until the
   intended Discord profile ownership is explicitly resolved.
