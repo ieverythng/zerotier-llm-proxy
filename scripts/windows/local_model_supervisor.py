@@ -41,8 +41,11 @@ def secure_state_directory():
         raise RuntimeError('Refusing a symbolic-link local stack state directory.')
     if os.name == 'nt':
         account = os.environ.get('USERDOMAIN', '.') + '\\' + getpass.getuser()
+        # Set inheritable permissions on the directory only. Recursing with
+        # /inheritance:r and directory-only OI/CI flags stripped the already-open
+        # launcher files of access, preventing the next start on Windows.
         result = subprocess.run(['icacls.exe', str(STATE), '/inheritance:r', '/grant:r', account + ':(OI)(CI)(F)',
-                                 '/grant:r', 'SYSTEM:(OI)(CI)(F)', '/T', '/C'], stdout=subprocess.DEVNULL,
+                                 '/grant:r', 'SYSTEM:(OI)(CI)(F)'], stdout=subprocess.DEVNULL,
                                 stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         if result.returncode:
             raise RuntimeError('Could not protect private stack state and logs.')

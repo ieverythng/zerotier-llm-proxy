@@ -61,6 +61,27 @@ class SupervisorTests(unittest.TestCase):
                 self.assertFalse(supervisor.check_ready(True))
                 probe.assert_not_called()
 
+    @unittest.skipUnless(os.name == 'nt', 'Windows state-directory ACLs')
+    def test_secured_state_can_reopen_launcher_files_on_second_start(self):
+        with tempfile.TemporaryDirectory(prefix='watson-acl-test-') as temp:
+            state = Path(temp) / 'local-stack'
+            state.mkdir()
+            paths = [state / 'supervisor.lock', state / 'supervisor.stdout.log', state / 'supervisor.stderr.log']
+            for path in paths:
+                path.write_bytes(b'x')
+            try:
+                with patch.object(supervisor, 'STATE', state):
+                    for _ in range(2):
+                        with supervisor.SupervisorLock():
+                            supervisor.secure_state_directory()
+                        for path in paths[1:]:
+                            with path.open('ab') as log:
+                                log.write(b'test')
+            finally:
+                for path in paths:
+                    subprocess.run(['icacls.exe', str(path), '/inheritance:e'], stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL, check=True)
+
     @unittest.skipUnless(os.name == 'nt', 'Windows ownership lifecycle')
     def test_suspended_child_is_owned_before_it_can_run_and_killed_on_close(self):
         job = supervisor.WindowsJob()

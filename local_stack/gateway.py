@@ -56,9 +56,11 @@ def prepare_chat(body: dict, model: dict) -> dict:
     """Apply bounded defaults without accepting inference-time launch overrides."""
     if not isinstance(body, dict) or not isinstance(body.get("messages"), list):
         raise StackError("Chat requests require a messages array.")
-    allowed = {"model", "messages", "temperature", "top_p", "top_k", "min_p", "max_tokens", "max_completion_tokens", "tools", "tool_choice", "parallel_tool_calls", "stream", "stream_options", "frequency_penalty", "presence_penalty", "response_format", "seed", "logit_bias", "stop", "n", "reasoning_effort", "chat_template_kwargs", "repeat_penalty"}
+    allowed = {"model", "messages", "temperature", "top_p", "top_k", "min_p", "max_tokens", "max_completion_tokens", "tools", "tool_choice", "parallel_tool_calls", "stream", "stream_options", "frequency_penalty", "presence_penalty", "response_format", "seed", "logit_bias", "stop", "n", "reasoning_effort", "chat_template_kwargs", "repeat_penalty", "store"}
     if set(body) - allowed:
         raise StackError("Unsupported inference fields; routing, credentials and runtime overrides are not accepted.")
+    if body.get("store", False) is not False:
+        raise StackError("Request storage is not supported; omit store or use false.")
     for message in body["messages"]:
         if not isinstance(message, dict):
             raise StackError("Each message must be an object.")
@@ -77,6 +79,9 @@ def prepare_chat(body: dict, model: dict) -> dict:
                 elif part.get("type") != "text":
                     raise StackError("Only text and inline image content parts are supported.")
     result = dict(body)
+    # pi-ai sends store=false for custom OpenAI-compatible URLs. It is a
+    # no-op here; do not pass a storage directive to the downstream proxies.
+    result.pop("store", None)
     output_keys = [key for key in ("max_tokens", "max_completion_tokens") if key in result]
     if len(output_keys) > 1:
         raise StackError("Specify max_tokens or max_completion_tokens, not both.")

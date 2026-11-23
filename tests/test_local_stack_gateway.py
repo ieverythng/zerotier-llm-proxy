@@ -104,6 +104,23 @@ class GatewayTests(unittest.TestCase):
         self.assertFalse(self.runtime.lock.locked())
         self.runtime.ensure_loaded.assert_called_once_with("saluki27b")
 
+    def test_accepts_dsh_no_store_with_completion_budget(self):
+        body = {"model": "saluki27b", "messages": [], "store": False, "max_completion_tokens": 256,
+                "stream": True, "stream_options": {"include_usage": True}}
+        self.assertEqual(self.request("POST", "/v1/chat/completions", body)[0], 200)
+        outbound = json.loads(self.opener.open.call_args.args[0].data)
+        self.assertNotIn("store", outbound)
+        self.assertEqual(outbound["max_completion_tokens"], 256)
+        self.assertEqual(outbound["stream_options"], {"include_usage": True})
+
+    def test_refuses_storage_requests(self):
+        for invalid in (True, None, "false", 0):
+            with self.subTest(invalid=invalid):
+                body = {"model": "saluki27b", "messages": [], "store": invalid}
+                self.assertEqual(self.request("POST", "/v1/chat/completions", body)[0], 400)
+        self.runtime.ensure_loaded.assert_not_called()
+        self.opener.open.assert_not_called()
+
     def test_busy_request_rejected_without_touching_model(self):
         self.runtime.acquire("inference")
         try:
