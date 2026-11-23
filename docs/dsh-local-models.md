@@ -113,11 +113,24 @@ In this same running DSH GUI:
 2. Provider ID: `watson-local`; display name: `Watson Local`.
 3. Protocol: **OpenAI Chat Completions**; endpoint:
    `http://127.0.0.1:4141/v1`.
-4. Put the private inference key into the native API-key field. The native page
-   stores a credential reference, never the secret value in YAML.
-5. Add the two model entries using the dry-run's IDs, names, context/output
-   values and input types. Keep reasoning levels disabled initially.
-6. Apply. Confirm the provider appears without selecting either model.
+4. Put the private inference key from `.runtime/local-stack/inference.token`
+   into the native masked API-key field. Do not paste it into chat. The native
+   page stores a credential reference, never the secret value in YAML.
+5. Click **Fetch available models**, check `saluki27b` and `inkling2-mini`, then
+   click **Update list**. DSH rc.5 imports the gateway's `contextWindow` and
+   `maxTokens`, but its discovery parser does not import modalities. In the
+   model options, verify the settings below and add the context to each name.
+6. Click **Create provider**. Fetch and Update list only update a draft. Confirm
+   **Watson Local** and both models appear in the picker without selecting either.
+
+| Model ID | Display name | Context | Max output | Input |
+| --- | --- | ---: | ---: | --- |
+| `saluki27b` | Underdog Saluki 27B · 150,016 ctx | 150,016 | 4,096 | Text, image |
+| `inkling2-mini` | Inkling 2 Mini Mix-12G · 8,192 ctx | 8,192 | 2,048 | Text |
+
+Keep selectable reasoning levels disabled initially. If a context override is
+active, use the value from `--use-gateway-metadata --dry-run` instead of the
+baseline shown above.
 
 The native page may derive `WATSON_LOCAL_API_KEY` instead of the scripted
 `LOCAL_STACK_API_KEY` reference; either is valid if it stores the same gateway
