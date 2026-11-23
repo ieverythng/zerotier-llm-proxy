@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "resources": {
+    "minimum_free_vram_mib": 2048,
+    "minimum_available_ram_gib": 2,
+    "startup_minimum_available_ram_gib": 3
+  },
+  "models": [
+    {
+      "id": "saluki27b",
+      "name": "Underdog Saluki 27B",
+      "path": "D:/MODELS/Underdog-Saluki-27B-1.0-IQ2-mix.gguf",
+      "engine": "../llama-b11433-win-cuda134/llama/llama-server.exe",
+      "context": 150016,
+      "context_presets": [50176, 100096, 150016],
+      "context_verified": true,
+      "max_output_tokens": 4096,
+      "input": ["text", "image"],
+      "kv_cache": "q4_0",
+      "batch_size": 512,
+      "ubatch_size": 128,
+      "gpu_layers": 99,
+      "mmproj": "D:/MODELS/mmproj-Underdog-Saluki-27B-1.0-F16.gguf",
+      "minimum_context": 32768,
+      "maximum_context": 150016,
+      "tested_prompt_tokens": 142834,
+      "estimated_vram_mib": 12673,
+      "load_mode": "dio",
+      "reasoning": "off"
+    },
+    {
+      "id": "inkling2-mini",
+      "name": "Inkling 2 Mini · Mix-12G",
+      "path": "D:/MODELS/Inkling-2-Mini-abliterated-Mix-12G.gguf",
+      "engine": ".runtime/local-model-deps/llama-b12633-win-cuda135/llama-server.exe",
+      "context": 8192,
+      "context_presets": [4096, 8192],
+      "context_verified": true,
+      "validation": "8,192 allocation and short text canaries passed; longer inputs and tools not yet qualified",
+      "max_output_tokens": 2048,
+      "input": ["text"],
+      "kv_cache": "f16",
+      "batch_size": 128,
+      "ubatch_size": 64,
+      "gpu_layers": "auto",
+      "minimum_context": 4096,
+      "maximum_context": 8192,
+      "fit_target_mib": 2450,
+      "estimated_vram_mib": 12400,
+      "reasoning": "auto",
+      "reasoning_effort": "low",
+      "reasoning_budget": 128,
+      "load_mode": "dio",
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "min_p": 0,
+      "extra_args": ["--no-op-offload"]
+    }
+  ]
+}

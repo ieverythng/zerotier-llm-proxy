@@ -1,0 +1,18 @@
+# This isolated, authenticated loopback proxy routes only to the local worker.
+# The switching gateway, not this wildcard router, admits registered model IDs.
+model_list:
+  - model_name: '*'
+    litellm_params:
+      model: 'openai/*'
+      api_base: 'http://127.0.0.1:18081/v1'
+      api_key: os.environ/LLAMA_CPP_API_KEY
+litellm_settings:
+  drop_params: false
+  request_timeout: 600
+  set_verbose: false
+  telemetry: false
+router_settings:
+  num_retries: 0
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  disable_spend_logs: true

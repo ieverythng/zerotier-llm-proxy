@@ -65,7 +65,36 @@ replace the model backend.
 See the [HTML operational guide](docs/headroom-hermes-integration.html) for the
 runtime architecture, scripts, cutover, and rollback procedure.
 
-## Quick Start
+## Watson Local: Saluki and Inkling
+
+The Windows terminal selector manages one GPU model at a time. Both models can
+be registered in DeepSeek Harness (DSH); a request for a different model loads
+it only after the existing request finishes. Busy requests return a conflict
+rather than interrupting work. This stack is loopback-only and separate from
+Hermes, ZeroTier and the legacy Watson launchers below.
+
+```powershell
+# Once, stage pinned runtimes alongside the existing stack
+.\scripts\windows\Install-LocalModelRuntime.ps1
+# Start the local stack and open the keyboard-driven selector
+.\scripts\windows\Start-LocalModelStack.ps1
+```
+
+The selector shows live RAM/VRAM, loaded and configured context, tested presets,
+and a guided registration flow for compatible GGUFs. See the [terminal guide](docs/local-model-launcher-tui.md)
+and the [DSH provider registration](docs/dsh-local-models.md). Saluki uses its
+existing b11433 CUDA engine with a tested 150,016-token allocation; Inkling uses
+b12633 with an 8,192-token allocation. These are total input-plus-output limits,
+not tested maximum prompt lengths for every profile. See the [Inkling runtime note](docs/knowledge/inkling-2-mini-discovery-2026-11-23.md).
+
+Isolated route: `127.0.0.1:4141/v1` → Headroom `18083` → LiteLLM `18082` →
+llama.cpp `18081`. It supports OpenAI Chat Completions, not Responses; Headroom
+runs without the legacy shared memory store, and the existing Hermes/ZeroTier
+stack is not modified. Use `-NoUi` to start it noninteractively, `-Serve` to keep
+supervision in the foreground, or `-Direct` to diagnose without the proxies.
+The launcher refuses to start while a legacy llama listener occupies port 8080.
+
+## Quick Start: Legacy Watson/Hermes
 
 ### Start Everything (One Command)
 
