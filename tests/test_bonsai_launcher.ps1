@@ -21,6 +21,16 @@ if (-not (Test-BonsaiRuntime -CommandLine $commandLine -ExpectedExecutable $exe 
     throw 'Known-good Bonsai command line was not recognized.'
 }
 
+$wrongPromptCache = $commandLine -replace '(?i)-cram 8192', '-cram 1024'
+if (Test-BonsaiRuntime -CommandLine $wrongPromptCache -ExpectedExecutable $exe -ModelPath $model -Port 8080 -ContextSize 100096 -BatchSize 512 -UBatchSize 256 -ApiKey 'llama.cpp') {
+    throw 'Runtime matcher accepted Bonsai with a different prompt-cache cap.'
+}
+
+$customCacheArgs = Get-BonsaiServerArguments -ModelPath $model -Port 8080 -ContextSize 100096 -BatchSize 512 -UBatchSize 256 -ApiKey 'llama.cpp' -CacheRamMiB 1024
+if (($customCacheArgs -join ' ') -notmatch '(?i)(^|\s)-cram 1024(?:\s|$)') {
+    throw 'Bonsai cache-RAM experiment override was not applied.'
+}
+
 $wrongCache = $commandLine -replace '(?i)-ctk q8_0', '-ctk f16'
 if (Test-BonsaiRuntime -CommandLine $wrongCache -ExpectedExecutable $exe -ModelPath $model -Port 8080 -ContextSize 100096 -BatchSize 512 -UBatchSize 256 -ApiKey 'llama.cpp') {
     throw 'Runtime matcher accepted a Bonsai server with a different K-cache type.'
@@ -32,7 +42,7 @@ if (Test-BonsaiRuntime -CommandLine $withoutDirectIo -ExpectedExecutable $exe -M
 }
 
 if (($serverArgs -join ' ') -match '(?i)qwen') { throw 'Bonsai launcher arguments unexpectedly mention another model.' }
-foreach ($required in @('-ngl 99', '-ctk q8_0', '-ctv q8_0', '-dio', '--reasoning off', '-np 1')) {
+foreach ($required in @('-ngl 99', '-ctk q8_0', '-ctv q8_0', '-cram 8192', '-dio', '--reasoning off', '-np 1')) {
     if (($serverArgs -join ' ') -notmatch [regex]::Escape($required)) { throw "Bonsai server arguments are missing '$required'." }
 }
 

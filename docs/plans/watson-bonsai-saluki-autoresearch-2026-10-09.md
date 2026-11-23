@@ -1,10 +1,14 @@
 # Watson Bonsai / Saluki autoresearch plan
 
 Date: 2026-10-09
-Status: Bonsai is the live candidate after a successful 100,096-context Q8_0
-KV fit and short routed stream canary. Neither candidate has passed the complete
-comparative promotion gate. Qwen3.8 is explicitly out of scope and must remain
-unloaded/unqueried.
+Status: Saluki is the live candidate at a 150,016-token Q4_0 K/V context
+allocation after an authenticated vision probe, a two-turn Headroom-routed
+tool-flow test, and a context staircase through 142,834 actual prompt tokens.
+The longest run reached 667.8 tok/s prefill / 29.6 tok/s decode with at least
+2,618 MiB free VRAM and 3.966 GiB available host RAM. During that run, the user
+actively tested Sunshine and confirmed the stream remained clear while GPU SM
+utilization was near 100%; NVENC telemetry showed an encoder session. Qwen3.8
+remains unloaded/unqueried.
 
 Current measurements and caveats are in
 [the candidate evaluation report](../reports/watson-bonsai-saluki-evaluation-2026-10-09.md).
@@ -13,9 +17,11 @@ Current measurements and caveats are in
 
 Select a reliable model/profile for the ZeroTier → Headroom → LiteLLM →
 llama.cpp → Hermes path, with multimodal support where available. Prioritize
-coherent tool use, prefill/TTFT and decode, a 100,096-token allocation, at least
-2 GiB free VRAM, and enough host RAM to keep the desktop, ChatGPT, Orca, and
-Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
+coherent tool use, prefill/TTFT and decode, a 150,016-token allocation and a
+145k-class actual prompt, at least 2 GiB free VRAM, and enough host RAM to keep
+the desktop, ChatGPT, Orca, and Sunshine responsive. Measure GPU SM utilization
+separately from video encoder/decoder utilization, and avoid impairing an active
+Sunshine stream.
 
 ## Guardrails
 
@@ -27,9 +33,9 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
   fails. Aim for at least 2.5 GiB VRAM before recommending concurrent Sunshine
   use because the current Saluki profile has only about 344 MiB margin over the
   hard floor.
-- Do not run a long-prompt benchmark while the user is actively using Sunshine.
-  Start with short probes, then request a quiet test window for the context
-  staircase.
+- Only run a long-prompt benchmark during active Sunshine use with the user's
+  explicit agreement and live monitoring; stop if the stream degrades or a
+  memory/health guardrail is crossed. Otherwise use a quiet test window.
 - Do not call a model “fully GPU resident” without retained startup evidence
   such as the exact GPU-offloaded layer count. Record requested flags and
   observed VRAM separately.
@@ -68,13 +74,14 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
    run, same 8k–16k prompts and same short decode length. Capture prefill,
    first-token latency, decode, token counts, minimum VRAM, host RAM, and GPU
    utilization independently.
-3. **Context staircase:** only in a quiet Sunshine window, step through
-   32k → 65k → 80k → 98k input at the 100,096 allocation. Stop on any safety
-   threshold or correctness failure; do not repeat a failed high-water mark.
-4. **KV cache:** for the best safe candidate, compare Q8_0 control to Q4_0
-   challenger at the same context and prompt. Keep Q4 only if strict retention,
-   tool calling, and quality probes remain equivalent and the VRAM benefit is
-   material.
+3. **Context staircase:** only with a stable host-RAM reserve and a quiet or
+   actively monitored Sunshine session, step through 32k → 65k → 100k → 125k
+   → 145k actual input at the 150,016 allocation. Stop on any safety threshold
+   or correctness failure; do not repeat a failed high-water mark.
+4. **KV cache:** at a safe context, compare Q8_0 control to Q4_0 challenger at
+   matched prompt lengths. Keep Q4 at 150k only if strict retention, tool
+   calling, and quality probes remain acceptable; document the precision/context
+   tradeoff instead of treating Q4 as quality-equivalent by assumption.
 5. **Batching / prefill:** one factor at a time for batch and ubatch. Require
    two cold repetitions and an end-to-end Hermes tool workflow before retaining
    a change.
@@ -94,7 +101,7 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
 
 - Two matched cold runs per candidate with prefill, TTFT, and decode recorded
   separately.
-- 100,096 allocation and a successful 98k-class prompt with at least 2,048 MiB
+- 150,016 allocation and a successful 145k-class prompt with at least 2,048 MiB
   sampled free VRAM throughout; target 2.5 GiB or more for Sunshine concurrency.
 - At least 2 GiB host available RAM, no OOM/pagefile thrash, and no sustained
   GPU saturation that interferes with Sunshine.
@@ -109,22 +116,54 @@ Sunshine responsive. Avoid increasing GPU contention while Sunshine is active.
 
 ## Current blockers / next action
 
-- The fresh Saluki test confirms 100,096 allocation, functioning vision,
-  tool calls, streaming, and Hermes CLI use. Full-context prefill and comparative
-  quality remain unmeasured.
-- The retained Saluki startup log warns that grounding may require
-  `--image-min-tokens 1024`; its prior image read used the default and does not
-  pass this grounding gate. The installed b11433 binary supports the flag. Run
-  a default-vs-1024 image probe only with VRAM monitoring and keep >=2,048 MiB
-  free throughout.
+- Latest Saluki allocation is 150,016 with Q4_0 K/V and the F16 projector. The
+  measured context staircase reached 142,834 actual prompt tokens (not the
+  exact allocation maximum): 98,504 tokens measured 799.4/36.5 tok/s
+  prefill/decode, 123,126 measured 723.2/32.5, and 142,834 measured
+  667.8/29.6. The 21.7k baseline was 1,014.6/53.6. The 56-layer challenger
+  reached 96% peak GPU use and only 12.9 tok/s decode, so it was rejected.
+- The `--image-min-tokens 1024` profile correctly read a supplied Discord
+  screenshot at 1,097 prompt tokens, leaving 2,910 MiB VRAM. A two-turn tool
+  interaction through Headroom → LiteLLM → llama.cpp returned a valid
+  `lookup_ticket` call and used its mock result. This validates API tool-call
+  shape, not Hermes-side execution of a real tool or a full Discord workflow.
+- After the Headroom-routed tool test, Windows available RAM briefly sampled
+  0.91 GiB, then recovered. Subsequent long-prompt samples remained at or above
+  3.966 GiB and the latest idle samples were 4.14–4.19 GiB; continue monitoring
+  RAM during future tests and do not start another WSL cold start while the
+  model is loaded.
+- The observed 99–100% `utilization.gpu` is GPU-kernel activity, not NVENC
+  utilization. During the near-145k prefill, telemetry showed one encoder
+  session at 25–26 FPS; the user confirmed Sunshine was actively streaming and
+  the image remained clear. This is a successful qualitative concurrency test,
+  though client-side dropped-frame/latency telemetry was not collected. No hard
+  90% utilization cap was tested or applied. The 56-layer profile is not a
+  viable substitute because decode dropped below 13 tok/s while peak GPU use
+  only fell from 100% to 96%.
 - The fresh Bonsai run confirms 100,096 allocation, about 4.7 GiB idle VRAM
   headroom, and one short streamed sentinel through Headroom/LiteLLM. It did
   not measure long-prefill throughput or exercise the full 100k prompt length.
-- Saluki has only ~2.3 GiB free VRAM at idle/warm state. Do not add concurrent
-  draft models or launch heavy context fills under Sunshine.
+- Saluki's long-run minimum free VRAM was 2,618 MiB, above the hard 2 GiB floor
+  and the 2.5 GiB concurrency target; the latest idle sample showed 2,864 MiB
+  free. Do not add concurrent draft models or exceed the tested context under
+  Sunshine without a fresh VRAM budget.
 - A cold WSL/Gateway start briefly reduced available host RAM to 0.79 GiB; it
   later reclaimed to 4.27-4.29 GiB across three idle samples with the gateway
   active. This transient warrants continued monitoring before any long prefill.
+- The latest five-case Bonsai suite scored 4/5 in 7.1 seconds, with a
+  stack-specific/factual miss in its Discord-style answer. Available RAM fell
+  from 3.47-3.48 GiB to 2.01-2.03 GiB afterward while llama-server working set
+  grew from 1.61 to 3.09 GiB. The active binary's default prompt-cache limit is
+  8,192 MiB; a 1,024 MiB Bonsai cache challenger is implemented and unit-tested
+  as an opt-in, but the 8,192 MiB baseline remains the launcher default until
+  the challenger is measured. It is not yet loaded. The verified Bonsai PID was
+  stopped idle; starting WSL for Hermes config verification left only 1.84 GiB
+  host RAM free, so the launcher
+  correctly refused to load either model. The active WSL gateway remains up;
+  `vmmem` uses about 3 GiB working set and a one-shot clean-cache reclaim did
+  not hold host RAM above the 3 GiB cold-start gate. Do not bypass resource
+  checks. A global `.wslconfig` memory/reclaim change needs user approval and
+  would interrupt Hermes plus affect every WSL2 distribution.
 - The generic `Start-WatsonStack.ps1` still defaults to Qwen. Do not invoke it
   without explicit Bonsai arguments. Use `Start-BonsaiStack.ps1` for the safe
   Bonsai-specific path; its exact live arguments are recorded in the evaluation

@@ -8,7 +8,9 @@ param(
     [ValidatePattern('^[A-Za-z0-9._-]+$')]
     [string]$ModelName = "qwen3.8",
     [string]$LiteLLMExecutable = '',
-    [switch]$UseStaticConfig
+    [switch]$UseStaticConfig,
+    [switch]$ValidateRuntimeOnly,
+    [switch]$EnsureMasterKey
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,20 +23,35 @@ function Resolve-LiteLLMExecutable {
         [bool]$MasterKeyAvailable
     )
 
-    if ($RequestedPath) {
-        if (-not (Test-Path -LiteralPath $RequestedPath -PathType Leaf)) {
-            throw "Requested LiteLLM executable does not exist: $RequestedPath"
-        }
-        $resolvedRequest = (Resolve-Path -LiteralPath $RequestedPath).Path
-        $projectPath = [IO.Path]::GetFullPath((Join-Path $RepositoryRoot '.runtime\litellm\.venv\Scripts\litellm.exe'))
-        if ([IO.Path]::GetFullPath($resolvedRequest) -eq $projectPath -and -not $MasterKeyAvailable) {
-            throw 'The project LiteLLM 1.104.2 proxy requires LITELLM_MASTER_KEY; refusing to start it without authentication.'
-        }
-        return $resolvedRequest
+    $projectPath = [IO.Path]::GetFullPath((Join-Path $RepositoryRoot '.runtime\litellm\.venv\Scripts\litellm.exe'))
+    $candidate = if ($RequestedPath) { [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $RequestedPath -ErrorAction Stop).Path) } else { $projectPath }
+
+    if ($candidate -ne $projectPath) {
+        throw 'Watson LiteLLM must use the patched repo-local runtime; PATH and external executables are refused.'
+    }
+    if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+        throw "The patched repo-local LiteLLM executable is missing: $candidate"
+    }
+    if (-not $MasterKeyAvailable) {
+        throw 'LITELLM_MASTER_KEY is required; refusing to start an unauthenticated LiteLLM proxy.'
     }
 
-    $command = Get-Command litellm -CommandType Application -ErrorAction Stop
-    return $command.Source
+    $pythonPath = Join-Path (Split-Path $candidate -Parent) 'python.exe'
+    if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) {
+        throw "The repo-local LiteLLM Python runtime is missing: $pythonPath"
+    }
+    $versionText = (& $pythonPath -c "import importlib.metadata; print(importlib.metadata.version('litellm'))" 2>&1 | Out-String).Trim()
+    $parsedVersion = [Version]::Zero
+    if (-not [Version]::TryParse($versionText, [ref]$parsedVersion)) {
+        throw "Could not verify the repo-local LiteLLM version from its Python environment: $versionText"
+    }
+    $minimumSafeVersion = [Version]'1.104.2'
+    if ($parsedVersion -lt $minimumSafeVersion) {
+        throw "LiteLLM $parsedVersion is below the verified security floor $minimumSafeVersion; refusing startup."
+    }
+
+    $script:verifiedLiteLLMVersion = $parsedVersion
+    return $candidate
 }
 
 function Test-HttpJson {
@@ -87,9 +104,23 @@ function Get-LegacyQwenAliasYaml {
 $litellmMasterKey = $env:LITELLM_MASTER_KEY
 if ([string]::IsNullOrWhiteSpace($litellmMasterKey)) {
     $litellmMasterKey = [Environment]::GetEnvironmentVariable('LITELLM_MASTER_KEY', 'User')
-    if (-not [string]::IsNullOrWhiteSpace($litellmMasterKey)) { $env:LITELLM_MASTER_KEY = $litellmMasterKey }
 }
+if ([string]::IsNullOrWhiteSpace($litellmMasterKey) -and $EnsureMasterKey) {
+    $keyBytes = New-Object byte[] 32
+    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $rng.GetBytes($keyBytes) }
+    finally { $rng.Dispose() }
+    $litellmMasterKey = 'sk-' + (-join ($keyBytes | ForEach-Object { $_.ToString('x2') }))
+    try { [Environment]::SetEnvironmentVariable('LITELLM_MASTER_KEY', $litellmMasterKey, 'User') }
+    catch { throw 'Could not save the generated LiteLLM master key to the current Windows user environment.' }
+    Write-Host 'Generated a random user-scoped LiteLLM master key; the value is hidden.' -ForegroundColor DarkGray
+}
+$env:LITELLM_MASTER_KEY = $litellmMasterKey
 $litellmExe = Resolve-LiteLLMExecutable -RequestedPath $LiteLLMExecutable -RepositoryRoot $repoRoot -MasterKeyAvailable (-not [string]::IsNullOrWhiteSpace($litellmMasterKey))
+if ($ValidateRuntimeOnly) {
+    Write-Host "LiteLLM preflight passed: repo-local version $script:verifiedLiteLLMVersion with bearer authentication enabled." -ForegroundColor Green
+    return
+}
 
 $models = Test-HttpJson -Uri "$LlamaCppBaseUrl/models" -ApiKey $BackendKey
 $availableModels = @()

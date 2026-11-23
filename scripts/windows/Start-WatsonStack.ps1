@@ -58,6 +58,14 @@ if ($ContextSize -eq 100000) {
 }
 $oracleEnabled = $EnableOracle -and -not $NoOracle
 $headroomEnabled = -not $NoHeadroom
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$litellmExecutable = Join-Path $repoRoot '.runtime\litellm\.venv\Scripts\litellm.exe'
+$litellmRuntimeScript = Join-Path $PSScriptRoot 'Start-Qwen36LiteLLM.ps1'
+if (-not (Test-Path -LiteralPath $litellmRuntimeScript -PathType Leaf)) {
+    throw "LiteLLM runtime validator not found: $litellmRuntimeScript"
+}
+& $litellmRuntimeScript -ValidateRuntimeOnly -EnsureMasterKey -LiteLLMExecutable $litellmExecutable
+$litellmMasterKey = $env:LITELLM_MASTER_KEY
 
 # ─── Color helpers ──────────────────────────────────────────────
 function Write-Step { param([string]$Msg); Write-Host ("`n[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $Msg) -ForegroundColor Cyan }
@@ -410,7 +418,7 @@ if ($RouteHermesThroughHeadroom -and -not $headroomEnabled) {
 Write-Step "Phase 2: Starting LiteLLM proxy"
 
 if (Test-PortListening -Port $LiteLLMPort) {
-    $existingProxyModels = Test-JsonEndpoint -Uri "$litellmBaseUrl/models"
+    $existingProxyModels = Test-JsonEndpoint -Uri "$litellmBaseUrl/models" -ApiKey $litellmMasterKey
     if (-not $existingProxyModels) {
         if (-not (Remove-UnhealthyListener -Port $LiteLLMPort -Name 'LiteLLM')) {
             throw "LiteLLM port $LiteLLMPort is occupied by an unhealthy listener that could not be stopped."
@@ -440,7 +448,7 @@ if (Test-PortListening -Port $LiteLLMPort) {
     }
 }
 if (-not (Test-PortListening -Port $LiteLLMPort)) {
-    $proxyScript = Join-Path $PSScriptRoot "Start-Qwen36LiteLLM.ps1"
+    $proxyScript = $litellmRuntimeScript
 
     if (-not (Test-Path -LiteralPath $proxyScript)) {
         throw "LiteLLM startup script not found: $proxyScript"
@@ -454,14 +462,15 @@ if (-not (Test-PortListening -Port $LiteLLMPort)) {
         "-ListenPort", $LiteLLMPort,
         "-BackendKey", $BackendKey,
         "-UpstreamModel", $ServedAlias,
-        "-ModelName", $Model
+        "-ModelName", $Model,
+        "-LiteLLMExecutable", $litellmExecutable
     ) | Out-Null
 
     # LiteLLM imports and validates its backend before serving model traffic.
     $proxyReady = $false
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Seconds 2
-        if (Test-JsonEndpoint -Uri "$litellmBaseUrl/models") {
+        if (Test-JsonEndpoint -Uri "$litellmBaseUrl/models" -ApiKey $litellmMasterKey) {
             $proxyReady = $true
             break
         }
@@ -567,7 +576,7 @@ Write-Host "  Stack Status Summary:" -ForegroundColor Green
 Write-Host ""
 
 $llamaUp = $null -ne (Test-JsonEndpoint -Uri "$llamaBaseUrl/models" -ApiKey $BackendKey)
-$litellmUp = $null -ne (Test-JsonEndpoint -Uri "$litellmBaseUrl/models")
+$litellmUp = $null -ne (Test-JsonEndpoint -Uri "$litellmBaseUrl/models" -ApiKey $litellmMasterKey)
 $headroomUp = $headroomEnabled -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$HeadroomPort/health"))
 $oracleUp = $oracleEnabled -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$Webchat2ApiPort/v1/models"))
 

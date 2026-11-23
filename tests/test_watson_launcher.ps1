@@ -2,6 +2,17 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $launcher = Join-Path $repo 'scripts\windows\Start-WatsonStack.ps1'
 $launcherSource = Get-Content -LiteralPath $launcher -Raw
+$runtimePreflightIndex = $launcherSource.IndexOf('-ValidateRuntimeOnly')
+$llamaPhaseIndex = $launcherSource.IndexOf('Phase 1: llama.cpp')
+if ($runtimePreflightIndex -lt 0 -or $runtimePreflightIndex -gt $llamaPhaseIndex) {
+    throw 'Watson must validate the authenticated repo-local LiteLLM runtime before starting llama.cpp.'
+}
+if ($launcherSource -notmatch '(?s)"-LiteLLMExecutable",\s*\$litellmExecutable') {
+    throw 'Watson must pass its verified repo-local LiteLLM executable explicitly; PATH fallback is forbidden.'
+}
+if ($launcherSource -notmatch 'Test-JsonEndpoint -Uri "\$litellmBaseUrl/models" -ApiKey \$litellmMasterKey') {
+    throw 'Watson must authenticate its LiteLLM readiness checks with the configured master key.'
+}
 $requiredPreflightTokens = @(
     '$probe.Refresh()',
     '$null -ne $exitCode',
@@ -40,6 +51,12 @@ if (-not (Test-JsonEndpoint -Uri 'http://proxy.test/v1/models')) {
 }
 if ($script:capturedHeaders.Count -ne 0) {
     throw 'The generic proxy health probe unexpectedly received an API key.'
+}
+if (-not (Test-JsonEndpoint -Uri 'http://proxy.test/v1/models' -ApiKey 'litellm-test-key')) {
+    throw 'Authenticated LiteLLM endpoint probe did not return its response.'
+}
+if ($script:capturedHeaders.Authorization -ne 'Bearer litellm-test-key') {
+    throw 'LiteLLM readiness probe did not attach its Bearer master key.'
 }
 if ($launcherSource -notmatch 'Test-WatsonChatHealth\.ps1.*-ApiKey \$BackendKey') {
     throw 'The bounded chat health check does not pass the backend API key.'

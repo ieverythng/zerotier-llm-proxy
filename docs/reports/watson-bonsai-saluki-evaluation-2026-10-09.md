@@ -6,32 +6,125 @@ intentionally not loaded or queried in this cycle.
 
 ## Outcome
 
-Bonsai is now the live Hermes candidate. It loaded at a 100,096-token context
-allocation, passed an authenticated Headroom/LiteLLM SSE canary, and left about
-4.7 GiB free VRAM. Qwen3.8 was not loaded or queried. This is a safe-fit and
-route check, not a final quality/performance promotion: there was no matched
-Saluki comparison or near-100k-token prompt, and only one routed tool call plus
-one basic Saluki image-read probe were run. Those probes do not constitute the
-planned multi-item tool/vision quality suite.
+Saluki is the current live Hermes candidate, loaded at a 150,016-token context
+allocation with Q4_0 K/V, `-ngl 99`, and the F16 image projector. The latest
+all-GPU 21,674-token prompt measured 1,014.6 tok/s prefill and 53.6 tok/s
+decode; a 56-layer offload challenger reduced peak SM utilization only from
+99% to 96% while decode fell to 12.9 tok/s, so it was rejected. The current
+profile is ready through llama.cpp, LiteLLM, and Headroom; Qwen3.8 was not
+loaded or advertised.
 
-The existing Bonsai evaluation remains relevant: Bonsai is much faster at
-decode and has considerably more spare VRAM, but it failed one of four routed
-agent workflows and had strict-JSON formatting failures. Saluki passed the
-small end-to-end tool-call gate in this cycle and has a working multimodal
-projection, but still needs a matched quality suite before it can be called
-objectively better.
+This confirms a 142,834-token prompt (about 95% of the 150,016 allocation), not
+the exact context maximum. A vision read and a two-turn Headroom-routed tool
+interaction passed. Host RAM briefly fell below the 2 GiB hard floor after the
+routed test, then recovered; subsequent long-prompt samples stayed above
+3.96 GiB, and the latest idle samples were 4.14–4.19 GiB. Near the end of the
+142.8k prefill, NVIDIA reported one encoder session at 25–26 FPS while SM use
+was near 100%; the user confirms this coincided with an active Sunshine test
+and that the stream remained clear. This is a successful qualitative
+concurrency test. We did not collect client-side dropped-frame or latency
+statistics, and the encoder PID was not attributable in WDDM telemetry. The
+Bonsai checkpoint and earlier Saluki runs below are retained as historical
+evidence, not current runtime status.
 
 ## Runtime configurations and evidence
 
 | | Ternary Bonsai 27B Q2_0 | Underdog Saluki 27B IQ2-mix |
 |---|---|---|
-| Context allocation | 100,096; latest fit run used Q8_0 K/V | 100,096; Q8_0 K/V |
+| Context allocation | 100,096; latest fit run used Q8_0 K/V | 150,016; current profile uses Q4_0 K/V |
 | Multimodal | No projector in the tested profile | F16 mmproj loaded with `--mmproj-offload` |
 | GPU request | CUDA device fit; all-layer offload requested in the tested profile | `-ngl 99`, flash attention on; all-layer offload requested |
-| VRAM | 11.0–11.1 GiB used / 4.6–4.7 GiB free in the latest Q8_0 run | 13.2–13.7 GiB used; minimum sampled free 2,344 MiB |
-| Latest 100k-class full-prompt throughput | Not measured; 100,096 was allocated but only a short route canary was run | Not measured; allocation was 100,096, longest fresh prompt was 22,460 tokens |
+| VRAM | 11.0–11.1 GiB used / 4.6–4.7 GiB free in the latest Q8_0 run | 2.9–3.3 GiB free on the current 150,016/Q4_0 profile |
+| Latest long-prompt throughput | Not measured; 100,096 was allocated but only a short route canary was run | 142,834 prompt tokens at 150,016 allocation; 667.8 tok/s prefill / 29.63 tok/s decode |
 
-For Saluki, `llama-server` reported a 100,096-token slot and loaded the F16
+## Latest Saluki GPU, vision, and tool checks (2026-10-09)
+
+The current launcher invocation was
+`Start-SalukiStack.ps1 -ContextSize 150000 -BatchSize 512 -UBatchSize 128
+-GpuLayerCount 99 -KVCacheType q4_0`, which normalized to 150,016. It loaded
+`D:\MODELS\Underdog-Saluki-27B-1.0-IQ2-mix.gguf` with
+`D:\MODELS\mmproj-Underdog-Saluki-27B-1.0-F16.gguf`, projector offload,
+`--image-min-tokens 1024`, flash attention, and one slot. The launcher finished
+its final gates with 3,328 MiB free VRAM and 2.7 GiB Windows-available RAM.
+Hermes selected Saluki at context 150,016 with vision enabled; LiteLLM and
+Headroom were already running. No package upgrades were performed in this
+runtime experiment.
+
+### Matched 21.7k prompt / 32-token decode
+
+| Profile | Prefill | Decode | First content | Peak `utilization.gpu` | Minimum free VRAM | Minimum host RAM |
+|---|---:|---:|---:|---:|---:|---:|
+| `-ngl 99`, `-ub 128`, Q4_0 K/V | 21.36 s / 1,014.6 tok/s | 0.579 s / 53.57 tok/s | 21.53 s | 99% | 3,033 MiB | 3.63 GiB |
+| `-ngl 56`, `-ub 128`, Q4_0 K/V | 25.64 s / 845.4 tok/s | 2.406 s / 12.88 tok/s | 25.82 s | 96% | 3,953 MiB | 3.105 GiB |
+
+The 56-layer challenger is rejected: it buys only four percentage points of
+peak SM utilization and loses about 76% of decode throughput. Both measurements
+used `nvidia-smi` GPU utilization samples; a parallel 500 ms telemetry stream
+reported video encoder 0% and decoder 0% throughout the 56-layer inference.
+Those zero values mean no active NVENC/NVDEC workload was observed, not that a
+live Sunshine stream was tested.
+
+The current all-GPU profile had 3,333 MiB free VRAM at idle. An image-grounding
+request against the earlier user-provided Discord screenshot correctly read
+the exact provider-failure warning and its `3m24s` duration. The 1,097-token
+request completed in 2.52 s and left 2,910 MiB VRAM free / 4.54 GiB host RAM.
+
+A two-turn OpenAI-compatible interaction through Headroom → LiteLLM → llama.cpp
+also passed with the configured `watson-global` project and `juanbeck` user
+headers. The first turn emitted `lookup_ticket` with exactly
+`{"ticket_id":"INC-042"}`; after supplying a local mock tool result, the model
+summarized the resolved P2 ticket in 1.39 s. This validates tool-call shape and
+follow-up use of a tool result, but the mock function was not an external tool
+execution and this was not a full Discord agent run. Immediately after this
+test, Windows available RAM sampled 0.91 GiB once, then recovered to 2.19,
+2.19, and 2.31 GiB. After passive settling, it recovered further to 4.11 GiB;
+the guarded 98.5k, 123.1k, and 142.8k prompt tests then had minimum RAM of
+4.041, 4.122, and 3.966 GiB respectively.
+
+### Context staircase at 150,016 allocation
+
+All rows use the live `-ngl 99 -ub 128 -ctk q4_0 -ctv q4_0` profile with 32
+forced output tokens. `first content` is TTFT; the benchmark's overall wall
+time includes an additional SSE-close tail and should not be used as model
+throughput.
+
+| Actual prompt tokens | Prefill | Decode | First content / TTFT | Peak GPU SM | Minimum free VRAM | Minimum host RAM |
+|---:|---:|---:|---:|---:|---:|---:|
+| 21,674 | 21.36 s / 1,014.6 tok/s | 0.579 s / 53.57 tok/s | 21.53 s | 99% | 3,033 MiB | 3.63 GiB |
+| 98,504 | 123.22 s / 799.4 tok/s | 0.850 s / 36.46 tok/s | 124.80 s | 100% | 2,876 MiB | 4.041 GiB |
+| 123,126 | 170.25 s / 723.2 tok/s | 0.953 s / 32.52 tok/s | 170.93 s | 100% | 2,876 MiB | 4.122 GiB |
+| 142,834 | 213.89 s / 667.8 tok/s | 1.046 s / 29.63 tok/s | 216.10 s | 100% | 2,618 MiB | 3.966 GiB |
+
+The model reaches the requested 100k-class prompt and handles a nearly full
+150k context safely, but throughput falls with prompt length: the 40+ tok/s
+decode result applies to the 21.7k prompt, not to 100k–145k. At the longest
+run, 32 output tokens were still generated; this is not a full 150,016-token
+input and does not prove behavior at exactly the allocation limit.
+
+### GPU / Sunshine interpretation
+
+NVIDIA documents `utilization.gpu` as time with one or more GPU kernels
+executing, and reports video encoder and decoder utilization as separate
+metrics ([NVIDIA `nvidia-smi` reference](https://docs.nvidia.com/deploy/nvidia-smi/index.html)).
+Sunshine can use NVENC; its own configuration notes that capture performance
+can fall when the GPU is heavily loaded
+([Sunshine configuration](https://github.com/LizardByte/Sunshine/blob/master/docs/configuration.md)).
+Therefore a 99% GPU reading is not a 99% NVENC reading, but shared memory,
+power, graphics scheduling, and capture work can still affect the stream. No
+standard llama.cpp setting measured here creates a hard 90% SM-utilization
+ceiling: partial layer offload was the tested lever and proved too slow. During
+the late near-145k prefill, one encoder session reported 25–26 FPS at 2% encoder
+utilization while GPU SM was 98–100%; the user confirmed a live Sunshine stream
+remained clear during this interval. This demonstrates that the tested NVENC
+and inference workloads co-ran acceptably by direct observation. It is not a
+quantitative guarantee for other games, resolutions, or network conditions;
+client-side frame-drop/latency telemetry was not collected, and `nvidia-smi
+pmon` did not identify the encoder PID. Later idle telemetry reported zero
+encoder sessions. No SM cap or GPU power/clock limit was applied.
+
+### Earlier Saluki 100k-context measurements (historical)
+
+For that earlier run, `llama-server` reported a 100,096-token slot and loaded the F16
 multimodal projector. The observed 22,460-token request prefetched at
 1,410.9 tok/s and decoded 7 tokens at 49.45 tok/s. A separate 2,649-token
 request measured 1,416.7 tok/s prefill and 61.22 tok/s decode over 30 output
@@ -272,3 +365,46 @@ and prompt suite. They are useful context, not a direct Saluki-vs-Bonsai win.
 
 Saluki source: [ConwayResearch/Underdog-Saluki-27B-1.0 model card](https://huggingface.co/ConwayResearch/Underdog-Saluki-27B-1.0).
 Runtime source: [llama.cpp b11433 release](https://github.com/ggml-org/llama.cpp/releases/tag/b11433).
+
+## Bonsai short-quality and RAM-cache follow-up (2026-10-09)
+
+Before the memory comparison, Bonsai was idle at 100,096 context, `-ngl 99`,
+Q8_0 K/V, with 4,676-4,691 MiB free VRAM and 3.47-3.48 GiB available host
+RAM across three samples. A five-case deterministic qualitative suite through
+the production LiteLLM 1.99 route completed in 7.1 seconds: 4/5 checks passed
+(context explanation, strict JSON, dependency order, and uncertainty restraint).
+The Discord-style response failed because it omitted the requested `prefill`
+term. It also used a generic FP16 KV estimate and recommended `torch.cuda`
+measurement for this llama.cpp/Q8 deployment; count that as a factual and
+stack-specific advice miss, not just a style failure. The exact response is in
+`_tmp/bench/qualitative/qualitative-bonsai-short-baseline-20261009-20261009_220132.json`.
+
+After the five requests, llama-server working set rose from roughly 1.61 to
+3.09 GiB and available host RAM fell to 2.01-2.03 GiB, while free VRAM stayed
+near 4.67 GiB and GPU utilization returned to 0%. Startup logs show llama.cpp's
+default prompt-cache limit was 8,192 MiB and several prompt checkpoints were
+retained. This run correlates cache growth with RAM pressure but does not
+isolate every allocation source. The Bonsai launcher now exposes `-CacheRamMiB`;
+1,024 MiB is an opt-in challenger, while the 8,192 MiB baseline remains the
+default until a runtime comparison is possible. Its runtime matcher and
+launcher test reject a mismatched cache setting. The challenger profile has
+not yet loaded or been benchmarked because host RAM fell below the launcher's
+3 GiB cold-start reserve.
+
+The idle Bonsai process was stopped by verified PID after its slot was confirmed
+idle. RAM briefly recovered to 5.15 GiB. The guarded launcher then invoked the
+Hermes WSL config check; WSL's active VM reduced Windows available RAM to
+1.84-1.85 GiB, and the launcher correctly refused to load a model. The Ubuntu
+gateway service remains active. Linux reported about 870 MiB used and 6.9 GiB
+available while Windows `vmmem` used about 3 GiB working set. The current
+`%UserProfile%\\.wslconfig` only sets a crash-dump folder, without a memory cap
+or explicit reclaim policy. A one-shot clean-cache reclaim briefly raised host
+available RAM to 2.94 GiB, but it settled back to 2.33 GiB; this is still too
+low to load either candidate while preserving the hard floor. No model server
+is currently running; LiteLLM and Headroom remain up. Qwen3.8 was not loaded or
+queried.
+
+Microsoft documents `.wslconfig` as global across WSL 2 distributions and notes
+that changes may require `wsl --shutdown`; any memory-cap/reclaim change needs
+user approval because it affects other WSL workloads and interrupts the active
+Hermes gateway. See [Microsoft's WSL configuration reference](https://learn.microsoft.com/en-us/windows/wsl/wsl-config).

@@ -52,23 +52,41 @@ if (-not $executableHelper) { throw 'LiteLLM executable resolver is missing.' }
 $localLiteLLM = Join-Path $repo '.runtime\litellm\.venv\Scripts\litellm.exe'
 if (Test-Path -LiteralPath $localLiteLLM -PathType Leaf) {
     $legacyLiteLLM = (Get-Command litellm -CommandType Application -ErrorAction Stop).Source
-    $resolvedWithoutKey = Resolve-LiteLLMExecutable -RequestedPath '' -RepositoryRoot $repo -MasterKeyAvailable $false
-    if ($resolvedWithoutKey -ne $legacyLiteLLM) {
-        throw 'The default launcher must retain the existing PATH runtime until the auth cutover is complete.'
-    }
     $rejectedUnauthenticated = $false
     try {
-        Resolve-LiteLLMExecutable -RequestedPath $localLiteLLM -RepositoryRoot $repo -MasterKeyAvailable $false | Out-Null
+        Resolve-LiteLLMExecutable -RequestedPath '' -RepositoryRoot $repo -MasterKeyAvailable $false | Out-Null
     } catch {
         $rejectedUnauthenticated = $true
     }
     if (-not $rejectedUnauthenticated) {
-        throw 'The project-local LiteLLM proxy must not be selected without its required master key.'
+        throw 'The Watson LiteLLM launcher must fail closed when no master key is available.'
     }
+
     $resolvedWithKey = Resolve-LiteLLMExecutable -RequestedPath $localLiteLLM -RepositoryRoot $repo -MasterKeyAvailable $true
     if ($resolvedWithKey -ne (Resolve-Path -LiteralPath $localLiteLLM).Path) {
-        throw 'With a LiteLLM master key, startup must prefer the project-local proxy runtime.'
+        throw 'With authentication configured, Watson must select the repo-local LiteLLM runtime.'
+    }
+
+    $pathFallbackRejected = $false
+    try {
+        Resolve-LiteLLMExecutable -RequestedPath $legacyLiteLLM -RepositoryRoot $repo -MasterKeyAvailable $true | Out-Null
+    } catch {
+        $pathFallbackRejected = $true
+    }
+    if (-not $pathFallbackRejected) {
+        throw 'Watson must reject a non-repo LiteLLM executable even when it is found on PATH.'
+    }
+
+    $runtimeScript = Join-Path $repo 'scripts\windows\Start-Qwen36LiteLLM.ps1'
+    $oldProcessKey = $env:LITELLM_MASTER_KEY
+    try {
+        $env:LITELLM_MASTER_KEY = 'sk-test-only-not-a-secret'
+        & $runtimeScript -ValidateRuntimeOnly -LiteLLMExecutable $localLiteLLM | Out-Null
+    }
+    finally {
+        if ($null -eq $oldProcessKey) { Remove-Item Env:LITELLM_MASTER_KEY -ErrorAction SilentlyContinue }
+        else { $env:LITELLM_MASTER_KEY = $oldProcessKey }
     }
 }
 
-Write-Host 'PASS: legacy Qwen names are emitted only when the served and upstream models are Qwen3.8.' -ForegroundColor Green
+Write-Host 'PASS: Watson requires an authenticated, security-floor-compliant repo-local LiteLLM and never falls back to PATH.' -ForegroundColor Green

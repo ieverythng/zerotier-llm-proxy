@@ -19,10 +19,18 @@ $upstreamUrl = [string]$health.config.openai_api_url
 if ($upstreamUrl -ne "http://127.0.0.1:4000/v1") {
     throw "Headroom upstream is not the expected LiteLLM endpoint: $upstreamUrl"
 }
+$litellmMasterKey = $env:LITELLM_MASTER_KEY
+if ([string]::IsNullOrWhiteSpace($litellmMasterKey)) {
+    $litellmMasterKey = [Environment]::GetEnvironmentVariable('LITELLM_MASTER_KEY', 'User')
+}
+if ([string]::IsNullOrWhiteSpace($litellmMasterKey)) {
+    throw 'LITELLM_MASTER_KEY is unavailable; cannot authenticate the LiteLLM status check.'
+}
 try {
     # LiteLLM's /health performs an upstream completion. Model discovery is a
     # passive readiness check and must not wake llama.cpp just to show status.
-    $upstreamHealth = Invoke-RestMethod -Uri "http://127.0.0.1:4000/v1/models" -TimeoutSec 5
+    $upstreamHealth = Invoke-RestMethod -Uri "http://127.0.0.1:4000/v1/models" `
+        -Headers @{ Authorization = "Bearer $litellmMasterKey" } -TimeoutSec 5
 } catch {
     throw "LiteLLM upstream model discovery is unavailable."
 }

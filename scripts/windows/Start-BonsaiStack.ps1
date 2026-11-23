@@ -6,6 +6,8 @@ param(
     [int]$BatchSize = 512,
     [ValidateRange(64, 1024)]
     [int]$UBatchSize = 256,
+    [ValidateRange(0, 32768)]
+    [int]$CacheRamMiB = 8192,
     [ValidateRange(2048, 16000)]
     [int]$MinimumFreeVramMiB = 2048,
     [ValidateRange(2, 64)]
@@ -45,7 +47,8 @@ function Get-BonsaiServerArguments {
         [int]$ContextSize,
         [int]$BatchSize,
         [int]$UBatchSize,
-        [string]$ApiKey
+        [string]$ApiKey,
+        [int]$CacheRamMiB = 8192
     )
 
     return @(
@@ -64,6 +67,7 @@ function Get-BonsaiServerArguments {
         '--jinja',
         '--reasoning', 'off',
         '-np', '1',
+        '-cram', [string]$CacheRamMiB,
         '--api-key', $ApiKey,
         '--metrics'
     )
@@ -78,7 +82,8 @@ function Test-BonsaiRuntime {
         [int]$ContextSize,
         [int]$BatchSize,
         [int]$UBatchSize,
-        [string]$ApiKey
+        [string]$ApiKey,
+        [int]$CacheRamMiB = 8192
     )
 
     if (-not $CommandLine) { return $false }
@@ -99,6 +104,7 @@ function Test-BonsaiRuntime {
         @{ Option = '-ctv'; Value = 'q8_0' },
         @{ Option = '--reasoning'; Value = 'off' },
         @{ Option = '-np'; Value = '1' },
+        @{ Option = '-cram'; Value = [string]$CacheRamMiB },
         @{ Option = '--api-key'; Value = $ApiKey }
     )) {
         if ((Get-CommandLineOptionValue -CommandLine $CommandLine -Option $check.Option) -ne $check.Value) {
@@ -238,7 +244,7 @@ provider = (config.get('providers') or {}).get('watson-llama') or {}
 model_info = (provider.get('models') or {}).get('bonsai27b') or {}
 headers = provider.get('extra_headers') or {}
 env_lines = (home / '.env').read_text(encoding='utf-8').splitlines()
-token_saved = any(line.startswith('HEADROOM_PROXY_TOKEN=') and len(line.split('=', 1)[1].strip().strip('"\'')) >= 32 for line in env_lines)
+token_saved = any(line.startswith('HEADROOM_PROXY_TOKEN=') and len(line.split('=', 1)[1].strip().strip(chr(34) + chr(39))) >= 32 for line in env_lines)
 checks = [
     model.get('default') == 'bonsai27b',
     int(model.get('context_length') or 0) == int(__CONTEXT__),
@@ -265,7 +271,7 @@ $spawnedProcess = $null
 
 if ($listener) {
     $process = Get-CimInstance Win32_Process -Filter "ProcessId = $($listener.OwningProcess)" -ErrorAction SilentlyContinue
-    if (-not $process -or -not (Test-BonsaiRuntime -CommandLine $process.CommandLine -ExpectedExecutable $llamaExe -ModelPath $modelPath -Port $llamaPort -ContextSize $ContextSize -BatchSize $BatchSize -UBatchSize $UBatchSize -ApiKey $backendKey)) {
+    if (-not $process -or -not (Test-BonsaiRuntime -CommandLine $process.CommandLine -ExpectedExecutable $llamaExe -ModelPath $modelPath -Port $llamaPort -ContextSize $ContextSize -BatchSize $BatchSize -UBatchSize $UBatchSize -ApiKey $backendKey -CacheRamMiB $CacheRamMiB)) {
         if (-not $ReplaceExistingLlama) {
             throw "Port $llamaPort is occupied by a different runtime. Nothing was stopped; pass -ReplaceExistingLlama only when intentionally switching the Watson model."
         }
@@ -310,7 +316,7 @@ else {
     }
 
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
-    $serverArgs = Get-BonsaiServerArguments -ModelPath $modelPath -Port $llamaPort -ContextSize $ContextSize -BatchSize $BatchSize -UBatchSize $UBatchSize -ApiKey $backendKey
+    $serverArgs = Get-BonsaiServerArguments -ModelPath $modelPath -Port $llamaPort -ContextSize $ContextSize -BatchSize $BatchSize -UBatchSize $UBatchSize -ApiKey $backendKey -CacheRamMiB $CacheRamMiB
     $spawnedProcess = Start-Process -FilePath $llamaExe -WorkingDirectory $llamaBinDir -ArgumentList $serverArgs `
         -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logDir 'llama.stdout.log') `
         -RedirectStandardError (Join-Path $logDir 'llama.stderr.log') -PassThru
@@ -386,4 +392,4 @@ if ($LASTEXITCODE -ne 0 -or $gatewayState -ne 'active') {
 }
 
 $reserve = Wait-ResourceReserve -MinimumFreeVramMiB $MinimumFreeVramMiB
-Write-Host "Bonsai stack is ready for Hermes. Stable reserve: $($reserve.FreeVramMiB) MiB VRAM and $([math]::Round($reserve.AvailableRamBytes / 1GB, 2)) GiB host RAM. No inference was run." -ForegroundColor Green
+Write-Host "Bonsai stack is ready for Hermes. Stable reserve: $($reserve.FreeVramMiB) MiB VRAM and $([math]::Round($reserve.AvailableRamBytes / 1GB, 2)) GiB host RAM; prompt cache capped at $CacheRamMiB MiB. No inference was run." -ForegroundColor Green
