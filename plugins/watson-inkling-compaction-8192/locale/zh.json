@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Inkling Long 上下文压缩",
+    "description": "限制标准预设中 Watson Local 的 Inkling Long 会话摘要的输出长度。请新建标准会话以使用更新后的策略。普通聊天输出和其他模型保持不变。"
+  }
+}

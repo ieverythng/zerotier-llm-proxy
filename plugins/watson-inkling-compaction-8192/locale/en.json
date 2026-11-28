@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Inkling Long compaction",
+    "description": "Keeps the Standard preset's conversation summaries within Watson Local's Inkling Long limit. Open a new Standard session for the updated policy. Normal chat output and other models are unchanged."
+  }
+}

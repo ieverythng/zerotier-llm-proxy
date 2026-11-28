@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Compactación de Inkling Long",
+    "description": "Limita los resúmenes de conversación de Inkling Long en Watson Local con el modo Estándar. Abre una sesión nueva en este modo para usar la política actualizada. No cambia las respuestas normales ni los demás modelos."
+  }
+}

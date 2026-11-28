@@ -1,5 +1,6 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:8080",
+    [string]$ApiKey = "",
     [int]$PromptTokens = 42000,
     [int]$TokenTolerance = 256,
     [int]$MaxOutputTokens = 32,
@@ -8,6 +9,10 @@ param(
     [string]$CorpusPath = "",
     [string]$OutCsv = "",
     [int]$RequestTimeoutSec = 900,
+    [ValidateRange(2, 64)]
+    [int]$MinimumAvailableRamGiB = 2,
+    [ValidateRange(2048, 16000)]
+    [int]$MinimumFreeVramMiB = 2048,
     [switch]$Stream,
     [switch]$IgnoreEos,
     [ValidateRange(100, 5000)]
@@ -35,14 +40,76 @@ function Write-Phase {
     Write-Host "[$stamp] $Message"
 }
 
+function New-ApiHeaders {
+    param([string]$ApiKey)
+
+    if ([string]::IsNullOrWhiteSpace($ApiKey)) { return @{} }
+    return @{ Authorization = "Bearer $ApiKey" }
+}
+
+function Test-BenchmarkResourceReserve {
+    param(
+        [double]$AvailableRamBytes,
+        [int]$FreeVramMiB,
+        [int]$MinimumFreeVramMiB,
+        [int]$MinimumAvailableRamGiB = 2
+    )
+
+    return ($AvailableRamBytes -ge ([double]$MinimumAvailableRamGiB * 1GB)) -and ($FreeVramMiB -ge $MinimumFreeVramMiB)
+}
+
+function Test-CompletionStreamEventTerminal {
+    param([string]$Data)
+
+    if ($Data -eq '[DONE]') { return $true }
+    try { $event = $Data | ConvertFrom-Json } catch { return $false }
+    if ($event.PSObject.Properties['stop'] -and [bool]$event.stop) { return $true }
+    if ($event.PSObject.Properties['finish_reason'] -and -not [string]::IsNullOrWhiteSpace([string]$event.finish_reason)) { return $true }
+    return $false
+}
+
+function Assert-BenchmarkStreamMode {
+    param([int]$TokenCount, [bool]$Streaming)
+
+    if (-not $Streaming -and $TokenCount -gt 32768) {
+        throw 'Long-context prefill measurements require -Stream so the hard RAM/VRAM reserve can be checked during inference.'
+    }
+}
+
+function Assert-CompletionStreamDeadline {
+    param([double]$ElapsedMilliseconds, [int]$TimeoutSeconds)
+
+    if ($TimeoutSeconds -lt 1 -or $ElapsedMilliseconds -ge ([double]$TimeoutSeconds * 1000)) {
+        throw "Streaming completion exceeded its ${TimeoutSeconds}-second request deadline."
+    }
+}
+
+function Get-AvailableRamBytes {
+    $sample = Get-Counter '\Memory\Available Bytes' -ErrorAction Stop
+    return [double]$sample.CounterSamples[0].CookedValue
+}
+
+function Get-BenchmarkResourceSample {
+    param([int]$MinimumFreeVramMiB, [int]$MinimumAvailableRamGiB)
+
+    $availableRam = Get-AvailableRamBytes
+    $freeVram = Get-GpuFreeMiB
+    $script:HostRamSamples += $availableRam
+    if (-not (Test-BenchmarkResourceReserve -AvailableRamBytes $availableRam -FreeVramMiB $freeVram -MinimumFreeVramMiB $MinimumFreeVramMiB -MinimumAvailableRamGiB $MinimumAvailableRamGiB)) {
+        throw "Benchmark safety stop: available RAM $([math]::Round($availableRam / 1GB, 2)) GiB, free VRAM $freeVram MiB."
+    }
+    return [pscustomobject]@{ AvailableRamBytes = $availableRam; FreeVramMiB = $freeVram }
+}
+
 function Invoke-Tokenize {
-    param([string]$Text)
+    param([string]$Text, [string]$ApiKey)
 
     $body = '{"content":' + (ConvertTo-JsonStringLiteral -Text $Text) + ',"add_special":false}'
 
     $response = Invoke-RestMethod `
         -Uri ("{0}/tokenize" -f $BaseUrl.TrimEnd("/")) `
         -Method Post `
+        -Headers (New-ApiHeaders -ApiKey $ApiKey) `
         -ContentType "application/json" `
         -Body $body `
         -TimeoutSec 120
@@ -66,7 +133,7 @@ function New-SeedPrompt {
 }
 
 function New-CalibratedPrompt {
-    param([int]$TargetTokens, [int]$Tolerance)
+    param([int]$TargetTokens, [int]$Tolerance, [string]$ApiKey)
 
     $targetChars = [Math]::Max(512, $TargetTokens * 4)
     $bestPrompt = ""
@@ -75,7 +142,7 @@ function New-CalibratedPrompt {
 
     for ($i = 0; $i -lt 12; $i++) {
         $prompt = New-SeedPrompt -TargetChars $targetChars
-        $tokenCount = Invoke-Tokenize -Text $prompt
+        $tokenCount = Invoke-Tokenize -Text $prompt -ApiKey $ApiKey
         $distance = [Math]::Abs($tokenCount - $TargetTokens)
 
         if ($distance -lt $bestDistance -and $tokenCount -le $TargetTokens) {
@@ -106,13 +173,21 @@ function New-CalibratedPrompt {
 }
 
 function Get-GpuFreeMiB {
+    $nvidiaSmi = Get-Command nvidia-smi.exe -ErrorAction SilentlyContinue
+    if (-not $nvidiaSmi) { return $null }
     try {
-        $line = & nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>$null | Select-Object -First 1
-        if ($line) { return [int]$line.Trim() }
-    }
-    catch {
-    }
-    return $null
+        $output = @(& $nvidiaSmi.Source --query-gpu=memory.free --format=csv,noheader,nounits 2>$null)
+        if ($LASTEXITCODE -ne 0) { return $null }
+        return ConvertFrom-NvidiaSmiMetric -Output $output
+    } catch { return $null }
+}
+
+function ConvertFrom-NvidiaSmiMetric {
+    param([string[]]$Output)
+
+    $value = @($Output | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1)
+    if ($value.Count -ne 1 -or $value[0] -notmatch '^\s*\d+\s*$') { return $null }
+    return [int]$value[0].Trim()
 }
 
 function Start-GpuSampler {
@@ -191,6 +266,9 @@ function Invoke-StreamingCompletion {
     param(
         [string]$Uri,
         [string]$RequestBody,
+        [string]$ApiKey,
+        [int]$MinimumAvailableRamGiB,
+        [int]$MinimumFreeVramMiB,
         [int]$TimeoutSec,
         [Diagnostics.Stopwatch]$Elapsed
     )
@@ -198,6 +276,9 @@ function Invoke-StreamingCompletion {
     $client = [Net.Http.HttpClient]::new()
     $client.Timeout = [TimeSpan]::FromSeconds($TimeoutSec)
     $request = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Post, $Uri)
+    foreach ($header in (New-ApiHeaders -ApiKey $ApiKey).GetEnumerator()) {
+        [void]$request.Headers.TryAddWithoutValidation($header.Key, $header.Value)
+    }
     $request.Content = [Net.Http.StringContent]::new($RequestBody, [Text.Encoding]::UTF8, "application/json")
     $httpResponse = $null
     $reader = $null
@@ -214,11 +295,29 @@ function Invoke-StreamingCompletion {
         $lastEvent = $null
         $firstTokenMs = $null
 
-        while (-not $reader.EndOfStream) {
-            $line = $reader.ReadLineAsync().GetAwaiter().GetResult()
+        while ($true) {
+            Assert-CompletionStreamDeadline -ElapsedMilliseconds $Elapsed.Elapsed.TotalMilliseconds -TimeoutSeconds $TimeoutSec
+            [void](Get-BenchmarkResourceSample -MinimumFreeVramMiB $MinimumFreeVramMiB -MinimumAvailableRamGiB $MinimumAvailableRamGiB)
+            $lineTask = $reader.ReadLineAsync()
+            while (-not $lineTask.Wait(1000)) {
+                Assert-CompletionStreamDeadline -ElapsedMilliseconds $Elapsed.Elapsed.TotalMilliseconds -TimeoutSeconds $TimeoutSec
+                [void](Get-BenchmarkResourceSample -MinimumFreeVramMiB $MinimumFreeVramMiB -MinimumAvailableRamGiB $MinimumAvailableRamGiB)
+            }
+            $line = $lineTask.GetAwaiter().GetResult()
+            if ($null -eq $line) { break }
             if (-not $line -or -not $line.StartsWith("data: ")) { continue }
             $data = $line.Substring(6)
-            if ($data -eq "[DONE]") { break }
+            if (Test-CompletionStreamEventTerminal -Data $data) {
+                if ($data -eq '[DONE]') { break }
+                $terminalEvent = $data | ConvertFrom-Json
+                $lastEvent = $terminalEvent
+                $terminalChunk = [string]$terminalEvent.content
+                if ($terminalChunk) {
+                    if ($null -eq $firstTokenMs) { $firstTokenMs = $Elapsed.Elapsed.TotalMilliseconds }
+                    [void]$content.Append($terminalChunk)
+                }
+                break
+            }
             $event = $data | ConvertFrom-Json
             $lastEvent = $event
             $chunk = [string]$event.content
@@ -256,6 +355,8 @@ if (-not $OutCsv) {
     $OutCsv = Join-Path $outDir ("direct-prefill-{0}-{1}.csv" -f $Variant, $stamp)
 }
 
+$script:HostRamSamples = @()
+
 $outParent = Split-Path -Parent $OutCsv
 if ($outParent) {
     New-Item -ItemType Directory -Force -Path $outParent | Out-Null
@@ -265,11 +366,11 @@ if ($CorpusPath -and (Test-Path -LiteralPath $CorpusPath)) {
     Write-Phase "Reading fixed corpus: $CorpusPath"
     $prompt = Get-Content -LiteralPath $CorpusPath -Raw
     Write-Phase "Tokenizing fixed corpus"
-    $tokenCount = Invoke-Tokenize -Text $prompt
+    $tokenCount = Invoke-Tokenize -Text $prompt -ApiKey $ApiKey
 }
 else {
     Write-Phase "Generating calibrated corpus near $PromptTokens tokens"
-    $calibrated = New-CalibratedPrompt -TargetTokens $PromptTokens -Tolerance $TokenTolerance
+    $calibrated = New-CalibratedPrompt -TargetTokens $PromptTokens -Tolerance $TokenTolerance -ApiKey $ApiKey
     $prompt = [string]$calibrated.prompt
     $tokenCount = [int]$calibrated.token_count
     if ($CorpusPath) {
@@ -278,6 +379,10 @@ else {
         Set-Content -LiteralPath $CorpusPath -Value $prompt -Encoding UTF8
     }
 }
+
+# Corpus files and calibration can differ from the requested token target.
+# Enforce the safety rule against the actual tokenized prompt before inference.
+Assert-BenchmarkStreamMode -TokenCount $tokenCount -Streaming ([bool]$Stream)
 
 $body = '{' +
     '"prompt":' + (ConvertTo-JsonStringLiteral -Text $prompt) + ',' +
@@ -289,6 +394,7 @@ $body = '{' +
     '}'
 
 $gpuBefore = Get-GpuFreeMiB
+$resourceBefore = Get-BenchmarkResourceSample -MinimumFreeVramMiB $MinimumFreeVramMiB -MinimumAvailableRamGiB $MinimumAvailableRamGiB
 $gpuSampler = Start-GpuSampler -IntervalMs $GpuSampleIntervalMs
 # Give the background sampler time to capture an idle point before submission.
 if ($gpuSampler) { Start-Sleep -Milliseconds ([Math]::Min(500, $GpuSampleIntervalMs * 2)) }
@@ -305,6 +411,9 @@ try {
         $streamed = Invoke-StreamingCompletion `
             -Uri $completionUri `
             -RequestBody $body `
+            -ApiKey $ApiKey `
+            -MinimumAvailableRamGiB $MinimumAvailableRamGiB `
+            -MinimumFreeVramMiB $MinimumFreeVramMiB `
             -TimeoutSec $RequestTimeoutSec `
             -Elapsed $stopwatch
         $response = $streamed.response
@@ -316,6 +425,7 @@ try {
         $response = Invoke-RestMethod `
             -Uri $completionUri `
             -Method Post `
+            -Headers (New-ApiHeaders -ApiKey $ApiKey) `
             -ContentType "application/json; charset=utf-8" `
             -Body $body `
             -TimeoutSec $RequestTimeoutSec
@@ -329,6 +439,7 @@ finally {
     $stopwatch.Stop()
     $gpuSamples = Stop-GpuSampler -Job $gpuSampler
     $gpuAfter = Get-GpuFreeMiB
+    try { [void](Get-BenchmarkResourceSample -MinimumFreeVramMiB $MinimumFreeVramMiB -MinimumAvailableRamGiB $MinimumAvailableRamGiB) } catch { if (-not $requestError) { $requestError = $_.Exception.Message } }
 }
 
 $timings = if ($response) { $response.timings } else { $null }
@@ -362,6 +473,10 @@ $row = [pscustomobject]@{
     gpu_max_utilization_pct = if ($null -ne $gpuSamples.maximum_utilization_pct) { [int]$gpuSamples.maximum_utilization_pct } else { "" }
     gpu_sample_count = [int]$gpuSamples.sample_count
     gpu_sample_interval_ms = $GpuSampleIntervalMs
+    ram_available_before_gib = [Math]::Round($resourceBefore.AvailableRamBytes / 1GB, 3)
+    ram_available_min_gib = if ($script:HostRamSamples.Count) { [Math]::Round((($script:HostRamSamples | Measure-Object -Minimum).Minimum) / 1GB, 3) } else { "" }
+    ram_available_after_gib = if ($script:HostRamSamples.Count) { [Math]::Round($script:HostRamSamples[-1] / 1GB, 3) } else { "" }
+    ram_sample_count = $script:HostRamSamples.Count
     corpus_path = $CorpusPath
     output_preview = $content.Substring(0, [Math]::Min(160, $content.Length))
     error = $requestError

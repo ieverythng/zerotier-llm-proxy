@@ -1,0 +1,12 @@
+model_list:
+  - model_name: bonsai27b
+    litellm_params:
+      model: openai/bonsai27b
+      api_base: http://127.0.0.1:8080/v1
+      api_key: os.environ/LLAMA_CPP_API_KEY
+
+litellm_settings:
+  drop_params: true
+  request_timeout: 60
+  set_verbose: false
+  stream_options_include_usage: true
