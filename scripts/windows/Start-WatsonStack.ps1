@@ -58,6 +58,14 @@ if ($ContextSize -eq 100000) {
 }
 $oracleEnabled = $EnableOracle -and -not $NoOracle
 $headroomEnabled = -not $NoHeadroom
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$litellmExecutable = Join-Path $repoRoot '.runtime\litellm\.venv\Scripts\litellm.exe'
+$litellmRuntimeScript = Join-Path $PSScriptRoot 'Start-Qwen36LiteLLM.ps1'
+if (-not (Test-Path -LiteralPath $litellmRuntimeScript -PathType Leaf)) {
+    throw "LiteLLM runtime validator not found: $litellmRuntimeScript"
+}
+& $litellmRuntimeScript -ValidateRuntimeOnly -EnsureMasterKey -LiteLLMExecutable $litellmExecutable
+$litellmMasterKey = $env:LITELLM_MASTER_KEY
 
 # ─── Color helpers ──────────────────────────────────────────────
 function Write-Step { param([string]$Msg); Write-Host ("`n[{0}] {1}" -f (Get-Date -Format 'HH:mm:ss'), $Msg) -ForegroundColor Cyan }
@@ -67,15 +75,22 @@ function Write-Fail { param([string]$Msg); Write-Host ("  [FAIL] {0}" -f $Msg) -
 
 # ─── Health check helper ────────────────────────────────────────
 function Test-JsonEndpoint {
-    param([string]$Uri)
-    try { return Invoke-RestMethod -Uri $Uri -Method Get -TimeoutSec 5 }
+    param(
+        [string]$Uri,
+        [string]$ApiKey = ""
+    )
+    $headers = @{}
+    if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+        $headers.Authorization = "Bearer $ApiKey"
+    }
+    try { return Invoke-RestMethod -Uri $Uri -Headers $headers -Method Get -TimeoutSec 5 -MaximumRedirection 0 }
     catch { return $null }
 }
 
 function Test-PortListening {
     param([int]$Port)
-    $conn = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue
-    return ($conn -ne $null)
+    return [bool](Get-NetTCPConnection -State Listen -ErrorAction Stop |
+        Where-Object LocalPort -eq $Port | Select-Object -First 1)
 }
 
 function Test-NvidiaHealth {
@@ -103,36 +118,45 @@ function Test-NvidiaHealth {
     }
 }
 
-function Get-ListenerProcessIds {
+function Get-SingleListenerProcess {
     param([int]$Port)
-    return @(
-        Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
-            Select-Object -ExpandProperty OwningProcess -Unique |
-            Where-Object { $_ -and $_ -ne 0 }
-    )
-}
-
-function Stop-ProcessTree {
-    param([int]$ProcessId)
-    if (-not $ProcessId) { return }
-    try { & taskkill.exe /PID $ProcessId /T /F *> $null } catch { }
-    Start-Sleep -Milliseconds 500
-    Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
-}
-
-function Remove-UnhealthyListener {
-    param([int]$Port, [string]$Name)
-    $owners = Get-ListenerProcessIds -Port $Port
-    if (-not $owners) { return $true }
-    foreach ($owner in $owners) {
-        Write-Warn "$Name has an unhealthy listener on port $Port (pid $owner); stopping it before launch."
-        Stop-ProcessTree -ProcessId ([int]$owner)
+    $owners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
+        Where-Object LocalPort -eq $Port | Select-Object -ExpandProperty OwningProcess -Unique)
+    if ($owners.Count -eq 1 -and $owners[0] -gt 0) {
+        return Get-CimInstance Win32_Process -Filter "ProcessId = $($owners[0])" -ErrorAction SilentlyContinue
     }
-    for ($attempt = 0; $attempt -lt 20; $attempt++) {
-        if (-not (Test-PortListening -Port $Port)) { return $true }
-        Start-Sleep -Milliseconds 250
+}
+
+function Test-LiteLLMListener {
+    param([int]$Port, [string]$ExpectedExecutable)
+    $process = Get-SingleListenerProcess -Port $Port
+    # The Python console entry point can have a child own the listening socket.
+    for ($depth = 0; $process -and $depth -lt 4; $depth++) {
+        if ($process.ExecutablePath -eq $ExpectedExecutable) { return $true }
+        if (-not $process.ParentProcessId) { break }
+        $parent = Get-CimInstance Win32_Process -Filter "ProcessId = $($process.ParentProcessId)" -ErrorAction SilentlyContinue
+        if (-not $parent.CreationDate -or -not $process.CreationDate -or $parent.CreationDate -gt $process.CreationDate) { break }
+        $process = $parent
     }
     return $false
+}
+
+function Confirm-ExistingLiteLLM {
+    param([int]$Port, [string]$ExpectedExecutable, [string]$BaseUrl, [string]$ApiKey, [string]$ModelName, [switch]$Replace)
+
+    if ($Replace) {
+        throw "-ReplaceLiteLLM cannot stop an existing listener on port $Port. Stop it through its owner or use a free port."
+    }
+    if (-not (Test-LiteLLMListener -Port $Port -ExpectedExecutable $ExpectedExecutable)) {
+        throw "LiteLLM port $Port is occupied by an unverified listener; no process was stopped."
+    }
+    $catalog = Test-JsonEndpoint -Uri "$BaseUrl/models" -ApiKey $ApiKey
+    if (-not $catalog) {
+        throw "LiteLLM listener on port $Port did not pass its authenticated model check; no process was stopped."
+    }
+    if (@($catalog.data.id) -notcontains $ModelName) {
+        throw "Running LiteLLM does not list '$ModelName'. Stop it through its owner or use a free port; no process was stopped."
+    }
 }
 
 function Get-LoadedModelContextSize {
@@ -193,13 +217,10 @@ if ($LlamaBinDir) {
 }
 
 function Get-LlamaServerCommandLine {
-    $listener = Get-NetTCPConnection -State Listen -LocalPort $LlamaPort -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $listener) { return '' }
-    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $($listener.OwningProcess)" -ErrorAction SilentlyContinue
-    if ($process) {
-        return [string]$process.CommandLine
-    }
-    return ""
+    $process = Get-SingleListenerProcess -Port $LlamaPort
+    if (-not $process.ExecutablePath -or [IO.Path]::GetFileName($process.ExecutablePath) -ne 'llama-server.exe') { return '' }
+    if ($LlamaBinDir -and $process.ExecutablePath -ne (Join-Path $LlamaBinDir 'llama-server.exe')) { return '' }
+    return [string]$process.CommandLine
 }
 
 function Get-CommandLineOptionValue {
@@ -277,34 +298,28 @@ if (-not $SkipLlamaStart) {
         throw "Cannot proceed without llama.cpp startup script."
     }
 
-    $existingModels = Test-JsonEndpoint -Uri "$llamaBaseUrl/models"
-    $existingNames = @()
-    if ($existingModels.data) { $existingNames += @($existingModels.data | ForEach-Object { $_.id }) }
-    if ($existingModels.models) { $existingNames += @($existingModels.models | ForEach-Object { $_.id; $_.name; $_.model }) }
-    $existingContextSize = Get-LoadedModelContextSize -Models $existingModels -ModelName $ServedAlias
-    $existingCommandLine = Get-LlamaServerCommandLine
-    $runtimeMatches = Test-RequestedLlamaRuntime `
-        -CommandLine $existingCommandLine `
-        -RequestedBatchSize $BatchSize `
-        -RequestedUBatchSize $UBatchSize `
-        -RequestedModelPath $ModelPath `
-        -RequestedSkipChatParsing ([bool]$SkipChatParsing) `
-        -RequestedBinDir $LlamaBinDir
-    if ($existingModels -and $existingNames -contains $ServedAlias -and $existingContextSize -eq $ContextSize -and $runtimeMatches) {
+    if (Test-PortListening -Port $LlamaPort) {
+        $existingCommandLine = Get-LlamaServerCommandLine
+        if (-not $existingCommandLine) {
+            throw "llama.cpp port $LlamaPort is occupied by an unverified listener; no process was stopped."
+        }
+        $existingModels = Test-JsonEndpoint -Uri "$llamaBaseUrl/models" -ApiKey $BackendKey
+        if (-not $existingModels) {
+            throw "llama.cpp listener on port $LlamaPort did not pass its authenticated model check; no process was stopped."
+        }
+        $existingContextSize = Get-LoadedModelContextSize -Models $existingModels -ModelName $ServedAlias
+        $runtimeMatches = Test-RequestedLlamaRuntime `
+            -CommandLine $existingCommandLine `
+            -RequestedBatchSize $BatchSize `
+            -RequestedUBatchSize $UBatchSize `
+            -RequestedModelPath $ModelPath `
+            -RequestedSkipChatParsing ([bool]$SkipChatParsing) `
+            -RequestedBinDir $LlamaBinDir
+        if ($existingContextSize -ne $ContextSize -or -not $runtimeMatches) {
+            throw "Running llama.cpp does not match the requested alias, context, or runtime. Stop it through its owner or use a free port; no process was stopped."
+        }
         Write-Ok "llama.cpp already healthy at $llamaBaseUrl (model: $ServedAlias, context: $existingContextSize)"
         $SkipLlamaStart = $true
-    } elseif ($existingModels) {
-        Write-Warn "llama.cpp is healthy but does not match the requested model, context, or runtime options. Reloading."
-        $stopScript = Join-Path $resolvedLlamaRepo "scripts\stop_llama_server.ps1"
-        if (-not (Test-Path -LiteralPath $stopScript)) {
-            throw "Cannot reload llama.cpp: stop script not found: $stopScript"
-        }
-        Invoke-PowerShellScript -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $stopScript, '-Port', $LlamaPort)
-        Start-Sleep -Seconds 2
-    } elseif (Test-PortListening -Port $LlamaPort) {
-        if (-not (Remove-UnhealthyListener -Port $LlamaPort -Name 'llama.cpp')) {
-            throw "llama.cpp port $LlamaPort is occupied by an unhealthy listener that could not be stopped. Reboot or reset the GPU before retrying."
-        }
     }
 
     if (-not $SkipLlamaStart) {
@@ -328,6 +343,9 @@ if (-not $SkipLlamaStart) {
     if ($Metrics)   { $llamaArgs += "-Metrics" }
     if ($SkipChatParsing) { $llamaArgs += "-SkipChatParsing" }
 
+    if (Test-PortListening -Port $LlamaPort) {
+        throw "llama.cpp port $LlamaPort became occupied before launch; no process was stopped."
+    }
     Write-Host "  Running: powershell $($llamaArgs -join ' ')" -ForegroundColor DarkGray
     Invoke-PowerShellScript -ArgumentList $llamaArgs
 
@@ -336,7 +354,8 @@ if (-not $SkipLlamaStart) {
     $ready = $false
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Seconds 2
-        $models = Test-JsonEndpoint -Uri "$llamaBaseUrl/models"
+        if (-not (Get-LlamaServerCommandLine)) { continue }
+        $models = Test-JsonEndpoint -Uri "$llamaBaseUrl/models" -ApiKey $BackendKey
         $modelNames = @()
         if ($models.data) { $modelNames += @($models.data | ForEach-Object { $_.id }) }
         if ($models.models) { $modelNames += @($models.models | ForEach-Object { $_.id; $_.name; $_.model }) }
@@ -357,8 +376,11 @@ if (-not $SkipLlamaStart) {
 } else {
     Write-Step "Phase 1: Skipping llama.cpp startup (user provided)"
 
-    # Verify it's already running
-    $models = Test-JsonEndpoint -Uri "$llamaBaseUrl/models"
+    $existingCommandLine = Get-LlamaServerCommandLine
+    if (-not $existingCommandLine) {
+        throw "No verified llama.cpp listener on port $LlamaPort for -SkipLlamaStart."
+    }
+    $models = Test-JsonEndpoint -Uri "$llamaBaseUrl/models" -ApiKey $BackendKey
     if (-not $models) {
         throw "llama.cpp is not responding at $llamaBaseUrl. Start it first or remove -SkipLlamaStart."
     }
@@ -390,7 +412,7 @@ if ($SkipCoherenceCheck) {
 } else {
     Write-Step 'Checking bounded, coherent chat generation'
     Write-Warn 'This gate performs two real model generations and will briefly raise GPU utilization.'
-    & (Join-Path $PSScriptRoot 'Test-WatsonChatHealth.ps1') -BaseUrl $llamaBaseUrl -Model $ServedAlias | Out-Host
+    & (Join-Path $PSScriptRoot 'Test-WatsonChatHealth.ps1') -BaseUrl $llamaBaseUrl -Model $ServedAlias -ApiKey $BackendKey | Out-Host
 }
 
 # ─── Phase 2: LiteLLM Proxy ─────────────────────────────────────
@@ -403,42 +425,19 @@ if ($RouteHermesThroughHeadroom -and -not $headroomEnabled) {
 Write-Step "Phase 2: Starting LiteLLM proxy"
 
 if (Test-PortListening -Port $LiteLLMPort) {
-    $existingProxyModels = Test-JsonEndpoint -Uri "$litellmBaseUrl/models"
-    if (-not $existingProxyModels) {
-        if (-not (Remove-UnhealthyListener -Port $LiteLLMPort -Name 'LiteLLM')) {
-            throw "LiteLLM port $LiteLLMPort is occupied by an unhealthy listener that could not be stopped."
-        }
-        $ReplaceLiteLLM = $true
-    }
-    $canonicalVisible = $existingProxyModels -and (@($existingProxyModels.data | ForEach-Object { $_.id }) -contains $Model)
-    if ($existingProxyModels -and -not $canonicalVisible -and -not $ReplaceLiteLLM) {
-        # A pre-canonical LiteLLM instance is still healthy, but it cannot
-        # serve the Hermes qwen3.8 name. Port 4000 is this stack's dedicated
-        # proxy, so replace that instance instead of silently leaving Hermes
-        # pointed at a model id it cannot resolve.
-        Write-Warn "LiteLLM is healthy but lacks qwen3.8; replacing its old alias-only configuration."
-        $ReplaceLiteLLM = $true
-    }
-    if ($ReplaceLiteLLM) {
-        Get-NetTCPConnection -State Listen -LocalPort $LiteLLMPort -ErrorAction SilentlyContinue |
-            Select-Object -ExpandProperty OwningProcess -Unique |
-            ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
-        Start-Sleep -Seconds 1
-    }
-    $proxyModels = if (-not $ReplaceLiteLLM) { $existingProxyModels } else { $null }
-    if ($proxyModels) {
-        Write-Ok "LiteLLM already running at $litellmBaseUrl"
-    } else {
-        Write-Warn "Port $LiteLLMPort occupied but not serving LiteLLM - you may need to kill the process."
-    }
-}
-if (-not (Test-PortListening -Port $LiteLLMPort)) {
-    $proxyScript = Join-Path $PSScriptRoot "Start-Qwen36LiteLLM.ps1"
+    Confirm-ExistingLiteLLM -Port $LiteLLMPort -ExpectedExecutable $litellmExecutable `
+        -BaseUrl $litellmBaseUrl -ApiKey $litellmMasterKey -ModelName $Model -Replace:$ReplaceLiteLLM
+    Write-Ok "LiteLLM already running at $litellmBaseUrl"
+} else {
+    $proxyScript = $litellmRuntimeScript
 
     if (-not (Test-Path -LiteralPath $proxyScript)) {
         throw "LiteLLM startup script not found: $proxyScript"
     }
 
+    if (Test-PortListening -Port $LiteLLMPort) {
+        throw "LiteLLM port $LiteLLMPort became occupied before launch; no process was stopped."
+    }
     Write-Host "  Running LiteLLM on port $LiteLLMPort..." -ForegroundColor DarkGray
     Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @(
         "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $proxyScript,
@@ -447,14 +446,17 @@ if (-not (Test-PortListening -Port $LiteLLMPort)) {
         "-ListenPort", $LiteLLMPort,
         "-BackendKey", $BackendKey,
         "-UpstreamModel", $ServedAlias,
-        "-ModelName", $Model
+        "-ModelName", $Model,
+        "-LiteLLMExecutable", $litellmExecutable
     ) | Out-Null
 
     # LiteLLM imports and validates its backend before serving model traffic.
     $proxyReady = $false
     for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Seconds 2
-        if (Test-JsonEndpoint -Uri "$litellmBaseUrl/models") {
+        if (-not (Test-LiteLLMListener -Port $LiteLLMPort -ExpectedExecutable $litellmExecutable)) { continue }
+        $proxyModels = Test-JsonEndpoint -Uri "$litellmBaseUrl/models" -ApiKey $litellmMasterKey
+        if (@($proxyModels.data.id) -contains $Model) {
             $proxyReady = $true
             break
         }
@@ -559,8 +561,9 @@ Write-Host "====================================================" -ForegroundCol
 Write-Host "  Stack Status Summary:" -ForegroundColor Green
 Write-Host ""
 
-$llamaUp = $null -ne (Test-JsonEndpoint -Uri "$llamaBaseUrl/models")
-$litellmUp = $null -ne (Test-JsonEndpoint -Uri "$litellmBaseUrl/models")
+$llamaUp = (Get-LlamaServerCommandLine) -and ($null -ne (Test-JsonEndpoint -Uri "$llamaBaseUrl/models" -ApiKey $BackendKey))
+$litellmUp = (Test-LiteLLMListener -Port $LiteLLMPort -ExpectedExecutable $litellmExecutable) -and
+    ($null -ne (Test-JsonEndpoint -Uri "$litellmBaseUrl/models" -ApiKey $litellmMasterKey))
 $headroomUp = $headroomEnabled -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$HeadroomPort/health"))
 $oracleUp = $oracleEnabled -and ($null -ne (Test-JsonEndpoint -Uri "http://127.0.0.1:$Webchat2ApiPort/v1/models"))
 

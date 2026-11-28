@@ -33,6 +33,9 @@ if ($statusSource -match '4000/health') {
 if ($statusSource -notmatch '4000/v1/models') {
     throw 'Headroom status is missing the passive LiteLLM /v1/models check.'
 }
+if ($statusSource -notmatch 'Authorization\s*=\s*"Bearer \$litellmMasterKey"') {
+    throw 'Headroom status must authenticate its passive LiteLLM model-discovery check.'
+}
 if ($launcherSource -notmatch 'SkipCoherenceCheck') {
     throw 'Launcher must expose an explicit opt-out for its real-generation coherence gate.'
 }

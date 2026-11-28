@@ -48,8 +48,8 @@ Current endpoints when running:
 
 | Service | ZeroTier |
 |---------|----------|
-| DFlash compatibility proxy | `http://10.88.140.94:18080/v1` |
-| LiteLLM / Hermes | `http://10.88.140.94:4000/v1` |
+| DFlash compatibility proxy | `http://<watson-zerotier-ip>:18080/v1` |
+| LiteLLM / Hermes | `http://<watson-zerotier-ip>:4000/v1` |
 
 Current measured recommendation: use llama.cpp with the Qwen3.8 IQ3_S GGUF for
 normal Hermes/Codex work. The canonical model name is `qwen3.8`; LiteLLM also
@@ -65,7 +65,49 @@ replace the model backend.
 See the [HTML operational guide](docs/headroom-hermes-integration.html) for the
 runtime architecture, scripts, cutover, and rollback procedure.
 
-## Quick Start
+## Watson Local: Saluki and Inkling
+
+**Watson Observatory**, the Windows terminal selector, manages one GPU model at a time. Both models can
+be registered in DeepSeek Harness (DSH); a request for a different model loads
+it only after the existing request finishes. Busy requests return a conflict
+rather than interrupting work. This stack is loopback-only and separate from
+Hermes, ZeroTier and the legacy Watson launchers below.
+
+```powershell
+# Stage isolated Python dependencies and the Inkling 150K / 100K vision engine
+.\scripts\windows\Install-LocalModelRuntime.ps1 -EngineBuild b12651
+# Stage the separate engine for the optional short Inkling profile
+.\scripts\windows\Install-LocalModelRuntime.ps1 -Only Engine -EngineBuild b12633
+# Open the keyboard-driven selector; choose a profile and press Enter to start
+.\scripts\windows\Start-LocalModelStack.ps1
+```
+
+The installer does not fetch GGUF models, projectors, or Saluki's separate
+[llama.cpp b11433 CUDA 13.4 build](https://github.com/ggml-org/llama.cpp/releases/tag/b11433).
+Place those artifacts at the paths in [the model registry](config/models.json),
+or set the registry paths to your verified copies before selecting a profile.
+
+The selector shows live RAM/VRAM, loaded and configured context, tested presets,
+and [request flow with observed and inferred activity](docs/local-model-request-flow.md).
+See the [terminal guide](docs/local-model-launcher-tui.md) and the
+[DSH provider registration](docs/dsh-local-models.md). Saluki retains its
+150,016-token allocation. The main Inkling profile supports **150,016-token
+native text + vision** on b12651, with CPU projection, GPU KV, and an explicit
+512 MiB / 1.25 GiB experimental admission policy. The **100,096 vision fallback** retains the
+normal 2,048 MiB / 2 GiB policy; the short b12633 profile is unchanged.
+Allocation includes input, images and output; the main output ceiling is 10,000
+(default 4,096 if omitted). **B → 3** runs a guarded seven-case vision/text quick
+check, and **V** shows historical qualification evidence. See the
+[150K qualification and rollout](<docs/reports/watson-inkling-150k-2026-11-25.md>).
+
+Isolated route: `127.0.0.1:4141/v1` → Headroom `18083` → LiteLLM `18082` →
+llama.cpp `18081`. It supports OpenAI Chat Completions, not Responses; Headroom
+runs without the legacy shared memory store, and the existing Hermes/ZeroTier
+stack is not modified. Use `-NoUi` to start it noninteractively, `-Serve` to keep
+supervision in the foreground, or `-Direct` to diagnose without the proxies.
+The launcher refuses to start while a legacy llama listener occupies port 8080.
+
+## Quick Start: Legacy Watson/Hermes
 
 ### Start Everything (One Command)
 
@@ -183,7 +225,7 @@ load errors.
 | Service | Local | ZeroTier |
 |---------|-------|----------|
 | llama.cpp | `http://127.0.0.1:8080/v1` | — |
-| LiteLLM Proxy | `http://127.0.0.1:4000/v1` | `http://10.88.140.94:4000/v1` |
+| LiteLLM Proxy | `http://127.0.0.1:4000/v1` | `http://<watson-zerotier-ip>:4000/v1` |
 | webchat2api (Oracle) | `http://127.0.0.1:9000/v1` | — |
 
 ## GPT-5 Oracle (webchat2api)

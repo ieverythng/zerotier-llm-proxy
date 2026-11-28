@@ -1,0 +1,7 @@
+# Inkling Long compaction
+
+This local configuration bundle changes only the Standard preset's compaction policy for `watson-local/inkling2-mini-long`. It reserves 8,192 tokens for compaction pressure calculations and caps the auxiliary summary at 4,096 output tokens. That cap is independent of normal chat output. Other model routes, provider settings, conversation defaults, and the Watson gateway are unchanged.
+
+The bundle targets DSH `0.2.2-rc.5` because the Loader replaces a preset's entire configuration rather than deep-merging it. Before installing, confirm that no later layer customizes Standard. After an upgrade, rebase the included Standard declaration on the new shipped preset before changing the version constraint. The bundled declaration is derived from the MIT-licensed, shipped `@deepseek-ai/dsh-web-app` Standard preset. This bundle has no scripts, dependencies, or runtime code of its own.
+
+Install or remove it with DSH's Plugins manager. Start a new Standard session after activation. Sessions already holding an earlier preset revision do not acquire the new policy. A disposable Inkling Long session can confirm the change by completing `/compact` on a short synthetic conversation and answering a follow-up that depends on its summary. Do not use a working session as a canary. Removing the bundle restores the underlying declaration for new sessions; it cannot undo a summary already stored by a test session.
